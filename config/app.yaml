@@ -8,6 +8,9 @@ language: hu
 # Személy, akihez az import alapértelmezésben tartozik (import --person felülírja).
 # Több személy (pl. pár) adatai külön kezelhetők; egy eszköz csak egy személyé lehet.
 default_person: me
+# A felület helyi portja (csak 127.0.0.1). Ha foglalt (pl. másik helyi alkalmazás),
+# a következő szabad portot használja. Felülírható: --port vagy VITALMART_PORT.
+ui_port: 8610
 
 sleep:
   # Alvásnap-konvenció: "wake" = az ébredés napja (alapértelmezett, SPEC 4.4),

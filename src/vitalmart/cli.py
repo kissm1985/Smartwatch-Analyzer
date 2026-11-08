@@ -166,6 +166,20 @@ def _open_when_ready(url: str, timeout_s: float = 60.0) -> None:
             time.sleep(0.5)
 
 
+def free_port(start: int, tries: int = 20) -> int:
+    """First port from ``start`` that can be bound on 127.0.0.1."""
+    import socket
+
+    for port in range(start, start + tries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+            return port
+    raise OSError(t("ui.no_free_port", start=start, end=start + tries - 1))
+
+
 def cmd_ui(cfg: AppConfig, args: argparse.Namespace) -> int:
     """Start the Streamlit UI bound to 127.0.0.1 only (SPEC 10.1)."""
     import os
@@ -174,11 +188,15 @@ def cmd_ui(cfg: AppConfig, args: argparse.Namespace) -> int:
 
     from vitalmart.paths import PROJECT_ROOT
 
+    wanted = int(args.port or os.environ.get("VITALMART_PORT") or cfg.ui_port)
+    port = free_port(wanted)
+    if port != wanted:
+        print(t("ui.port_taken", wanted=wanted, port=port), flush=True)
     cmd = [sys.executable, "-m", "streamlit", "run", str(PROJECT_ROOT / "app" / "main.py"),
-           "--server.address", "127.0.0.1", "--server.port", str(args.port),
+           "--server.address", "127.0.0.1", "--server.port", str(port),
            "--server.headless", "true", "--browser.gatherUsageStats", "false"]
     env = dict(os.environ, VITALMART_DATA_DIR=str(cfg.data_path))
-    url = f"http://127.0.0.1:{args.port}/"
+    url = f"http://127.0.0.1:{port}/"
     print(t("ui.started", url=url), flush=True)
     if args.open:
         threading.Thread(target=_open_when_ready, args=(url,), daemon=True).start()
@@ -320,7 +338,8 @@ def build_parser() -> argparse.ArgumentParser:
     qa.set_defaults(func=cmd_quality)
 
     ui = sub.add_parser("ui", help="grafikus felület indítása (csak 127.0.0.1)")
-    ui.add_argument("--port", type=int, default=8501)
+    ui.add_argument("--port", type=int, default=None,
+                    help="helyi port (alapértelmezés: config/app.yaml ui_port = 8610)")
     ui.add_argument("--open", action="store_true", help="böngésző automatikus megnyitása")
     ui.set_defaults(func=cmd_ui)
 

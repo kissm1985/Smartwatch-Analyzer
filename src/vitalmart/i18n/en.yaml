@@ -57,6 +57,8 @@ quality:
   switch_row: "{date} {metric}: {from_source} → {to_source}"
   none: "none"
 ui:
+  port_taken: "Port {wanted} is in use (e.g. another local app), using port {port} instead."
+  no_free_port: "No free port in {start}–{end}; choose another with --port."
   started: "VitalMart: {url}  (stop: Ctrl+C)"
   not_localhost: "For safety VitalMart only runs on the local machine (127.0.0.1). Configured address: {address}"
   person: "Person"

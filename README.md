@@ -21,7 +21,7 @@ Ha van **Node.js** (18+) és **Git** a gépeden, ugyanúgy indítható, mint egy
 git clone -b claude/funny-keller-v2yxsd https://github.com/kissm1985/smartwatch-analyzer.git vitalmart
 cd vitalmart
 npm install        # első alkalommal: telepíti az uv-t (ha nincs) és a Python-környezetet
-npm run dev        # elindul a felület, és megnyílik a böngészőben: http://127.0.0.1:8501
+npm run dev        # elindul a felület, és megnyílik a böngészőben: http://127.0.0.1:8610
 ```
 
 Frissítés később: `git pull`, `npm install`, `npm run dev`. Leállítás: Ctrl+C.
@@ -68,7 +68,7 @@ verziója a `schema_migrations` táblában van. Az adatmappa helye: `config/app.
 uv run vitalmart ui            # vagy: uv run streamlit run app/main.py
 ```
 
-Megnyitás: <http://127.0.0.1:8501>. A felület **csak a helyi gépen** érhető el
+Megnyitás: <http://127.0.0.1:8610>. A felület **csak a helyi gépen** érhető el
 (`.streamlit/config.toml`: `address = "127.0.0.1"`, telemetria kikapcsolva; ha mégis más
 címre kötnéd, az alkalmazás nem indul el). Világos/sötét téma a rendszer szerint, a jobb felső
 menüben váltható.
@@ -239,7 +239,7 @@ További parancsok:
 | `vitalmart status` | táblák sorszáma |
 | `vitalmart backup` | adatbázis-másolat a `data/backups/` mappába |
 | `vitalmart wipe --yes` | **minden** adat törlése (adatbázis, exportok, mentések, beállítások) |
-| `vitalmart ui [--port 8501]` | grafikus felület (csak 127.0.0.1) |
+| `vitalmart ui [--port 8610] [--open]` | grafikus felület (csak 127.0.0.1; foglalt portnál a következő szabadot választja) |
 | `vitalmart report [--person KOD] [--days 90 \| --from ÉÉÉÉ-HH-NN --to ÉÉÉÉ-HH-NN] [--out f.html] [--pdf]` | egészségügyi riport (HTML, `--pdf`-fel PDF is) |
 | `vitalmart export [--tables T …] [--person KOD …] [--from …] [--to …] [--format xlsx\|csv\|parquet]` | adatexport; `--list` a táblák, `--history` a korábbi exportok, `--regenerate ID` újrakészítés |
 | `vitalmart diagnose <export> [--person KOD] [--out diag.md] [--quick]` | **önellenőrzés**: a teljes feldolgozás egy ideiglenes adatmappában (a saját adatbázist nem érinti); megosztható, értékek nélküli jelentés – hibabejelentéshez |
@@ -481,7 +481,7 @@ felhasználói érték SQL-paraméter; a felhasználói szövegek az `src/vitalm
 | „Ezt a fájlt már betöltötted” | azonos fájl; `--force`-szal újratölthető (duplikáció nem keletkezik) |
 | „Az XML-fájl sérült vagy csonka” | exportáld / töltsd le újra; az adatbázis változatlan maradt (rollback) |
 | „Az adatbázist egy másik folyamat használja” | egyszerre egy folyamat írhat: zárd be a felületet a parancssori import előtt, vagy importálj a felületről |
-| A felület nem indul: a 8501-es port foglalt | `uv run vitalmart ui --port 8502` |
+| Másik helyi alkalmazás (pl. egy másik Streamlit-app a 8501-en) | a VitalMart alapból a **8610**-es portot használja, foglaltság esetén automatikusan a következő szabadot (a terminál kiírja); fix port: `config/app.yaml` → `ui_port`, vagy `npm run dev -- --port 8620` |
 | Kevés a memória / lassú a nagy import | csökkentsd a `database.memory_limit` értékét (`config/app.yaml`); a DuckDB a `tmp/` mappába lapoz |
 | Időzóna vagy alvásnap-konvenció módosítása után furcsa napok | `uv run vitalmart rebuild` (a felületi mentés ezt automatikusan elvégzi) |
 | A riport egy szekciónál „nincs elegendő adat” | az időszakban kevés érvényes nap van (pl. új óra); válassz hosszabb/korábbi időszakot – ez szándékos, a riport nem következtet kevés adatból |

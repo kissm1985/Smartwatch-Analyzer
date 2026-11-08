@@ -192,3 +192,16 @@ def test_npm_launcher_and_ui_open_flag(monkeypatch):
     t0 = time.perf_counter()
     cli._open_when_ready("http://127.0.0.1:9/", timeout_s=1.0)   # nothing listens there
     assert not opened and time.perf_counter() - t0 < 5
+
+
+def test_ui_port_default_and_fallback_when_taken():
+    import socket
+
+    from vitalmart import cli
+    assert load_config().ui_port == 8610
+    assert cli.build_parser().parse_args(["ui"]).port is None
+    with socket.socket() as busy:
+        busy.bind(("127.0.0.1", 0))
+        busy.listen()
+        taken = busy.getsockname()[1]
+        assert cli.free_port(taken) != taken

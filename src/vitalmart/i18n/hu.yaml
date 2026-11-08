@@ -57,6 +57,8 @@ quality:
   switch_row: "{date} {metric}: {from_source} → {to_source}"
   none: "nincs"
 ui:
+  port_taken: "A {wanted}-es port foglalt (pl. egy másik helyi alkalmazás), ezért a {port}-es portot használom."
+  no_free_port: "Nincs szabad port a {start}–{end} tartományban; adj meg másikat: --port."
   started: "VitalMart: {url}  (leállítás: Ctrl+C)"
   not_localhost: "Biztonsági okból a VitalMart csak a helyi gépen (127.0.0.1) futhat. Beállított cím: {address}"
   person: "Személy"
