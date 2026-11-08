@@ -299,3 +299,71 @@ def test_mapping_lives_in_yaml(tmp_path: Path):
     assert ad.classify_name("DI_CONNECT/DI-Connect-Aggregator/DailySummary_1.json") == "json:uds"
     assert ad.classify_name("DI_CONNECT/DI-Connect-Aggregator/UDSFile_1.json") == "json:generic"
     assert zipfile.is_zipfile is not None
+
+
+# ---------------------------------------------------------------- real-export regressions
+
+def test_fit_user_profile_time_of_day_fields_import(con, cfg, garmin_zip: Path):
+    """Real activity FIT files carry user_profile.wake_time / sleep_time, which fitdecode
+    returns as datetime.time – that used to fail the whole import with a bare TypeError."""
+    r = run_import(con, cfg, garmin_zip, person="kmi")
+    assert r.status == "success"
+    rows = con.execute("""SELECT json_extract_string(fields, '$.wake_time'),
+                                 json_extract_string(fields, '$.sleep_time')
+                          FROM stg_garmin_fit_message WHERE message = 'user_profile'
+                          LIMIT 1""").fetchall()
+    assert rows == [("06:30:00", "23:00:00")]
+
+
+def test_fit_jsonable_handles_any_decoded_type():
+    import json
+    from datetime import date, time, timedelta
+    from decimal import Decimal
+    from enum import Enum
+
+    from vitalmart.importers.fit import _jsonable
+
+    class E(Enum):
+        A = 1
+
+    vals = [time(6, 30), date(2024, 1, 2), timedelta(seconds=90), Decimal("1.5"), E.A,
+            {1: time(1)}, {3, 4}, float("nan"), float("inf"), object()]
+    out = [_jsonable(v) for v in vals]
+    json.dumps(out)                                     # never raises
+    assert out[:5] == ["06:30:00", "2024-01-02", 90.0, 1.5, "A"]
+    assert out[7] is None and out[8] is None
+
+
+def test_corrupt_fit_inside_multi_file_export_is_skipped(con, cfg, tmp_path: Path):
+    folder = tmp_path / "usb" / "GARMIN" / "Activity"
+    folder.mkdir(parents=True)
+    good = FitWriter()
+    good.message("file_id", type=4, manufacturer=1, product=1, serial_number=7,
+                 time_created=fit_time(datetime(2024, 1, 1)))
+    good.message("record", timestamp=fit_time(datetime(2024, 1, 1, 8)), heart_rate=90)
+    (folder / "ok.fit").write_bytes(good.to_bytes())
+    bad = bytearray(good.to_bytes())
+    bad[-1] ^= 0xFF
+    (folder / "broken.fit").write_bytes(bytes(bad))
+    pv = preview(tmp_path / "usb")
+    assert pv.type_counts.get("fit:corrupt") == 1
+    r = run_import(con, cfg, tmp_path / "usb")
+    assert r.status == "success" and r.counts.errors == 1
+    assert scalar(con, "SELECT count(*) FROM stg_garmin_fit_file") == 1
+
+
+def test_failed_import_log_names_code_location_without_values(con, cfg, garmin_zip: Path,
+                                                               monkeypatch):
+    from vitalmart.importers import garmin as gm
+
+    def boom(*_a, **_k):
+        raise TypeError("unsupported operand type(s) for +: 'NoneType' and 'int' (value 72.5)")
+
+    monkeypatch.setattr(gm.GarminAdapter, "load_staging", boom)
+    with pytest.raises(ImportFailure) as ei:
+        run_import(con, cfg, garmin_zip)
+    msg = con.execute("""SELECT message FROM dim_import_batch WHERE status = 'failed'
+                         ORDER BY import_batch_id DESC LIMIT 1""").fetchall()[0][0]
+    assert msg.startswith("TypeError @ service.py:")
+    assert "'NoneType' and 'int'" in msg and "72" not in msg
+    assert "TypeError @" in str(ei.value.kwargs.get("reason", ""))

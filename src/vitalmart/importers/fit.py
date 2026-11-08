@@ -12,7 +12,9 @@ import io
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
+from enum import Enum
 from typing import Any
 
 import fitdecode
@@ -43,15 +45,30 @@ def _naive_utc(v: datetime) -> datetime:
 
 
 def _jsonable(v: Any) -> Any:
+    """Any decoded FIT value → JSON-safe value. Real devices produce types the synthetic
+    files did not (e.g. ``localtime_into_day`` → ``datetime.time`` in user_profile), so
+    everything unknown falls back to ``str`` instead of failing the whole import."""
+    if v is None or isinstance(v, bool | int | str):
+        return v
+    if isinstance(v, float):
+        return None if v != v or v in (float("inf"), float("-inf")) else v
     if isinstance(v, datetime):
         return _naive_utc(v).isoformat()
+    if isinstance(v, date | time):
+        return v.isoformat()
+    if isinstance(v, timedelta):
+        return v.total_seconds()
+    if isinstance(v, Decimal):
+        return float(v)
     if isinstance(v, bytes | bytearray):
         return v.hex()
-    if isinstance(v, tuple | list):
+    if isinstance(v, tuple | list | set):
         return [_jsonable(x) for x in v]
-    if isinstance(v, float) and v != v:  # NaN
-        return None
-    return v
+    if isinstance(v, dict):
+        return {str(k): _jsonable(x) for k, x in v.items()}
+    if isinstance(v, Enum):
+        return v.name
+    return str(v)
 
 
 def _fit_seconds(dt: datetime) -> int:
@@ -112,4 +129,5 @@ def _s(v: Any) -> str | None:
 
 def messages_json(msgs: list[FitMessage]) -> Iterator[tuple[int, str, datetime | None, str]]:
     for m in msgs:
-        yield m.index, m.name, m.ts_utc, json.dumps(m.fields, ensure_ascii=False, sort_keys=True)
+        yield m.index, m.name, m.ts_utc, json.dumps(m.fields, ensure_ascii=False,
+                                                    sort_keys=True, default=str)

@@ -12,6 +12,7 @@ import duckdb
 
 from vitalmart.config import AppConfig
 from vitalmart.datamart.sqlutil import fetch_row
+from vitalmart.errors import technical_reason
 from vitalmart.i18n import t
 from vitalmart.importers import ADAPTERS
 from vitalmart.importers.base import ImportFailure, LoadCounts, Preview, ProgressFn, SourceAdapter
@@ -156,16 +157,17 @@ def run_import(
     except Exception as exc:
         con.execute("ROLLBACK")
         reason_key = exc.i18n_key if isinstance(exc, ImportFailure) else None
+        tech = technical_reason(exc)          # type + code location + masked message
         reason = t(reason_key, **exc.kwargs) if isinstance(exc, ImportFailure) and reason_key \
-            else type(exc).__name__
+            else tech
         # technical detail only – never data values
-        log.error("import batch %s failed: %s", batch_id, type(exc).__name__)
+        log.error("import batch %s failed: %s", batch_id, tech)
         con.execute(
             "INSERT INTO dim_import_batch (import_batch_id, started_at, finished_at, vendor, "
             "adapter, file_name, file_path, sha256, status, message, person_key) "
             "VALUES (?, now()::TIMESTAMP, now()::TIMESTAMP, ?, ?, ?, ?, ?, 'failed', ?, ?)",
             [batch_id, adapter.vendor, adapter.name, path.name, str(path), sha,
-             type(exc).__name__ if reason_key is None else reason_key, person],
+             tech if reason_key is None else reason_key, person],
         )
         if isinstance(exc, ImportFailure):
             raise

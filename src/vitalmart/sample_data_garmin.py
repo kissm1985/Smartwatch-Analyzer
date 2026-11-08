@@ -278,6 +278,8 @@ def _activity_fit(start: datetime, mins: int, dist_m: float, hr: int,
     w = FitWriter()
     w.message("file_id", type=4, manufacturer=1, product=4115, serial_number=DEVICE_ID,
               time_created=fit_time(start))
+    # like real activity files: the user profile (wake/sleep time → datetime.time on decode)
+    w.message("user_profile", wake_time=6 * 3600 + 30 * 60, sleep_time=23 * 3600)
     for s in range(0, mins * 60, 10):
         w.message("record", timestamp=fit_time(start + timedelta(seconds=s)),
                   heart_rate=max(60, min(200, hr + rnd.randint(-8, 8))),

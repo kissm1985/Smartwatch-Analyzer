@@ -246,6 +246,7 @@ class GarminAdapter(SourceAdapter):
         zf = self._open(path)
         dates: list[str] = []
         entries = list(self._expand(self._entries(path, zf)))
+        n_fit = sum(self.classify_name(e.rel) == "fit" for e in entries)
         for i, e in enumerate(entries):
             nk = self.classify_name(e.rel)
             if nk.startswith("json:"):
@@ -262,8 +263,11 @@ class GarminAdapter(SourceAdapter):
                 try:
                     ff = fit.decode(e.read())
                 except fitdecode.FitError as exc:
-                    raise ImportFailure("import.bad_fit", e.rel,
-                                        file=PurePosixPath(e.rel).name) from exc
+                    if n_fit == 1:
+                        raise ImportFailure("import.bad_fit", e.rel,
+                                            file=PurePosixPath(e.rel).name) from exc
+                    pv.type_counts["fit:corrupt"] = pv.type_counts.get("fit:corrupt", 0) + 1
+                    continue
                 key = f"fit:{ff.file_type}"
                 pv.type_counts[key] = pv.type_counts.get(key, 0) + 1
                 dates += [m.ts_utc.date().isoformat() for m in ff.messages[:1] if m.ts_utc]
@@ -328,7 +332,15 @@ class GarminAdapter(SourceAdapter):
         """, error_condition="false"))
 
         for j, (rel, data) in enumerate(fit_files):
-            total.add(self._load_fit(con, rel, data, batch_id))
+            try:
+                total.add(self._load_fit(con, rel, data, batch_id))
+            except ImportFailure as exc:
+                # a single standalone FIT must fail loudly; inside a multi-file export one
+                # broken file (e.g. an interrupted upload) must not block everything else
+                if exc.i18n_key != "import.bad_fit" or len(fit_files) == 1:
+                    raise
+                log.warning("corrupt FIT skipped: %s", PurePosixPath(rel).name)
+                total.errors += 1
             if progress:
                 progress(0.5 + (j + 1) / max(len(fit_files), 1) * 0.5)
         if progress:

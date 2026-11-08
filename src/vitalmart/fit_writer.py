@@ -55,6 +55,8 @@ MESSAGES: dict[str, tuple[int, dict[str, tuple[int, str]]]] = {
                         "heart_rate": (27, "uint8")}),
     "stress_level": (227, {"stress_level_value": (0, "sint16"),
                            "stress_level_time": (1, "uint32")}),
+    # real activity files carry the user profile; wake/sleep time decode to datetime.time
+    "user_profile": (3, {"wake_time": (28, "uint32"), "sleep_time": (29, "uint32")}),
 }
 
 

@@ -10,13 +10,11 @@ are masked (numbers and quoted strings replaced). The user's own database is not
 from __future__ import annotations
 
 import platform
-import re
 import resource
 import shutil
 import sys
 import tempfile
 import time
-import traceback
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -28,6 +26,7 @@ import duckdb
 
 from vitalmart import __version__
 from vitalmart.config import AppConfig, load_config
+from vitalmart.errors import mask, technical_reason
 
 CORE_TABLES = ["fact_measurement", "fact_heart_rate_sample", "fact_stress_sample",
                "fact_daily_summary", "fact_sleep_session", "fact_sleep_stage_interval",
@@ -35,14 +34,6 @@ CORE_TABLES = ["fact_measurement", "fact_heart_rate_sample", "fact_stress_sample
                "fact_body_measure", "fact_vo2max", "derived_person_daily",
                "derived_daily_stats", "derived_weekly_activity", "derived_sleep_regularity",
                "derived_training_load", "dim_source", "dim_metric", "dim_activity_type"]
-
-
-def mask(text: str) -> str:
-    """Remove anything value-like from an error message."""
-    text = re.sub(r"'[^']*'", "'…'", text)
-    text = re.sub(r'"[^"]*"', '"…"', text)
-    text = re.sub(r"(?<![A-Za-z_])\d+([.,:\-/]\d+)*", "#", text)
-    return text[:300]
 
 
 @dataclass
@@ -74,11 +65,8 @@ def _stage(diag: Diagnosis, name: str) -> Iterator[Stage]:
         yield st
     except Exception as exc:
         st.ok = False
-        frames = [f"{Path(f.filename).name}:{f.lineno}"
-                  for f in traceback.extract_tb(exc.__traceback__)
-                  if "vitalmart" in f.filename][-4:]
-        st.error = f"{type(exc).__name__}: {mask(str(exc).splitlines()[0] if str(exc) else '')}" \
-                   + (f" ({' ← '.join(reversed(frames))})" if frames else "")
+        cause = exc.__cause__ or exc
+        st.error = technical_reason(cause)
     finally:
         st.seconds = time.perf_counter() - t0
 
