@@ -66,6 +66,7 @@ class AnalysisSpec(BaseModel):
     secondary_measure: str | None = None
     facet: str | None = None
     corr_method: Literal["spearman", "pearson"] = "spearman"
+    show_events: bool = True            # event bands on time-axis charts (SPEC 8.2/11)
 
     def agg_of(self, m: MeasureSel, model: SemanticModel) -> str:
         return m.agg or model.topics[self.topic].measures[m.key].agg

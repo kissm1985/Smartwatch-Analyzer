@@ -14,13 +14,23 @@ st.set_page_config(page_title="VitalMart", page_icon="❤️", layout="wide")
 get_cfg()
 guard_localhost()
 
-pages = [
-    st.Page("views/1_Attekintes.py", title=t("ui.nav.overview"), icon="🏠", default=True),
-    st.Page("views/2_Import.py", title=t("ui.nav.import"), icon="📥"),
-    st.Page("views/3_Riport.py", title=t("ui.nav.report"), icon="📄"),
-    st.Page("views/4_Elemzo.py", title=t("ui.nav.explorer"), icon="📊"),
-    st.Page("views/5_Adatminoseg.py", title=t("ui.nav.quality"), icon="🧪"),
-    st.Page("views/6_Export.py", title=t("ui.nav.export"), icon="💾"),
-    st.Page("views/7_Beallitasok.py", title=t("ui.nav.settings"), icon="⚙️"),
-]
+pages = {
+    t("ui.nav.section_data"): [
+        st.Page("views/1_Attekintes.py", title=t("ui.nav.overview"), icon="🏠", default=True),
+        st.Page("views/2_Import.py", title=t("ui.nav.import"), icon="📥"),
+        st.Page("views/5_Adatminoseg.py", title=t("ui.nav.quality"), icon="🧪"),
+        st.Page("views/8_Esemenyek.py", title=t("ui.nav.events"), icon="🗓️"),
+    ],
+    t("ui.nav.section_analysis"): [
+        st.Page("views/3_Riport.py", title=t("ui.nav.report"), icon="📄"),
+        st.Page("views/4_Elemzo.py", title=t("ui.nav.explorer"), icon="📊"),
+        st.Page("views/9_Halado.py", title=t("ui.nav.advanced"), icon="🔬"),
+        st.Page("views/10_Nezetek.py", title=t("ui.nav.views"), icon="🧩"),
+    ],
+    t("ui.nav.section_system"): [
+        st.Page("views/6_Export.py", title=t("ui.nav.export"), icon="💾"),
+        st.Page("views/11_SQL.py", title=t("ui.nav.sql"), icon="⌨️"),
+        st.Page("views/7_Beallitasok.py", title=t("ui.nav.settings"), icon="⚙️"),
+    ],
+}
 st.navigation(pages).run()

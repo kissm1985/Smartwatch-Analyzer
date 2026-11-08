@@ -26,12 +26,31 @@ def _finish(fig: go.Figure, title: str | None = None) -> go.Figure:
     return fig
 
 
-def _date_axis(fig: go.Figure, df: pd.DataFrame, x: str | None) -> go.Figure:
+EVENT_COLOR = "#f59e0b"
+
+
+def add_event_bands(fig: go.Figure, events: list) -> go.Figure:
+    """User events as shaded vertical bands with their label (SPEC 8.2/11)."""
+    grid = getattr(fig, "_grid_ref", None) is not None
+    for e in events:
+        kw = {"row": "all", "col": "all"} if grid else {}
+        fig.add_vrect(x0=pd.Timestamp(e.start_date),
+                      x1=pd.Timestamp(e.end_date) + pd.Timedelta(days=1),
+                      fillcolor=EVENT_COLOR, opacity=0.15, line_width=0, layer="below",
+                      name=e.label, annotation_text=e.label, annotation_position="top left",
+                      annotation_font_size=10, **kw)
+    return fig
+
+
+def _date_axis(fig: go.Figure, df: pd.DataFrame, x: str | None,
+               res: Result | None = None) -> go.Figure:
     """Hungarian date ticks (ÉÉÉÉ.HH.NN.) – plotly's own month names are English."""
     if x == "period" and x in df.columns and (
             pd.api.types.is_datetime64_any_dtype(df[x])
             or (len(df) and hasattr(df[x].iloc[0], "year"))):
         fig.update_xaxes(tickformat="%Y.%m.%d.", hoverformat="%Y.%m.%d. %H:%M")
+        if res is not None and res.events:
+            add_event_bands(fig, res.events)
     return fig
 
 
@@ -94,7 +113,7 @@ def build_figure(res: Result) -> go.Figure:
             fig.update_yaxes(title_text=" / ".join(_label(res, c) for c in ms if c != sec),
                              secondary_y=False)
             fig.update_yaxes(title_text=_label(res, sec), secondary_y=True)
-            return _finish(_date_axis(fig, df, x))
+            return _finish(_date_axis(fig, df, x, res))
         long = _melt(res, df, x, series, facet, ms)
         color = series or "_m"
         extra = {}
@@ -109,7 +128,7 @@ def build_figure(res: Result) -> go.Figure:
                  **facet_kw, **extra, **kw)
         if chart in ("line", "area") and spec.time_grain in ("raw", "hour"):
             fig.update_traces(line={"width": 1})
-        return _finish(_date_axis(fig, df, x))
+        return _finish(_date_axis(fig, df, x, res))
 
     if chart in ("scatter", "bubble"):
         size = ms[2] if chart == "bubble" else None

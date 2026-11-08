@@ -74,6 +74,7 @@ def load_into_state(spec: AnalysisSpec, *, scope_person: bool = True) -> None:
     ss["ex_secondary"] = spec.secondary_measure or ""
     ss["ex_facet"] = spec.facet or ""
     ss["ex_corr"] = spec.corr_method
+    ss["ex_events"] = spec.show_events
 
 
 if "ex_topic" not in ss:
@@ -212,6 +213,7 @@ with left:
                          else t("explorer.none"))
     corr = st.radio(t("explorer.corr_method"), ["spearman", "pearson"], key="ex_corr",
                     horizontal=True)
+    show_events = st.checkbox(t("explorer.show_events"), value=True, key="ex_events")
 
 spec_dict = {
     "topic": topic_key,
@@ -223,7 +225,7 @@ spec_dict = {
                       if vf_m and (vf_min is not None or vf_max is not None) else []),
     "quality_ok_only": quality, "transform": tr, "transform_window": int(window),
     "chart": chart, "secondary_measure": secondary or None, "facet": facet or None,
-    "corr_method": corr,
+    "corr_method": corr, "show_events": show_events,
 }
 
 # ---------------------------------------------------------------- result

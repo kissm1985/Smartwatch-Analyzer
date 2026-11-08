@@ -26,6 +26,7 @@ class Query:
 def _sub(expr: str, topic: Topic) -> str:
     return (expr.replace("{person}", topic.person_expr)
             .replace("{date_key}", topic.date_key)
+            .replace("{date}", topic.date_expr)
             .replace("{minute}", topic.minute_expr))
 
 
@@ -43,13 +44,15 @@ def _period_expr(spec: AnalysisSpec, topic: Topic) -> str | None:
 
 
 def _joins_for(exprs: list[str], topic: Topic, model: SemanticModel, extra: set[str]) -> list[str]:
-    needed = set(extra)
     alias = {"date": "dd.", "source": "ds.", "time_of_day": "td.", "activity_type": "aty.",
-             "metric": "dm."}
-    for e in exprs:
-        for name, a in alias.items():
-            if a in e:
-                needed.add(name)
+             "metric": "dm.", "event": "ev."}
+    needed = set(extra) | {name for e in exprs for name, a in alias.items() if a in e}
+    while True:      # a join's ON clause may need another join (event → person via dim_source)
+        more = {name for j in needed if j in model.joins
+                for name, a in alias.items() if a in _sub(model.joins[j], topic)} - needed
+        if not more:
+            break
+        needed |= more
     return [j for j in topic.joins if j in needed]
 
 

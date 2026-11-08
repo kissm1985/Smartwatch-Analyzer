@@ -22,7 +22,8 @@ külön kezelhetők (személy = elemzési dimenzió, nem felhasználói fiók). 
 | M5 – szemantikus réteg + Elemző (Explorer) | ✅ kész |
 | M6 – riportmotor (szabálykatalógus, szekciók, ábrák) HTML-ben | ✅ kész |
 | M7 – PDF és XLSX/CSV/Parquet export, export-előzmények | ✅ kész |
-| M8–M9 | ⏳ |
+| M8 – események/annotációk, lag-korreláció, összehasonlító mód, saját nézetek, SQL-konzol | ✅ kész |
+| M9 – valós exporton tesztelés, teljesítményhangolás, dokumentáció | ⏳ következik |
 
 ## Telepítés
 
@@ -53,6 +54,10 @@ menüben váltható.
 | Adatminőség | lefedettség (havi hőtérkép), hézagok, megjelölt értékek, nem viselés, forrásváltások |
 | Beállítások | időzóna, nyelv, alvásnap-konvenció, alvási cél, alapvonal; személyek neve és profilja (érvényességi időszakokkal, pulzuszónák); elsődleges forrás metrikánként; riportküszöbök; mentés, újraszámolás, **teljes törlés** (megerősítéssel) |
 | Elemző | lásd lent |
+| Haladó elemzés | eltolásos (lag) korreláció és összehasonlító mód – lásd lent |
+| Saját nézetek | mentett elemzések műszerfalként (1–3 oszlop), közös időszak/személy felülírással |
+| Események | saját események/időszakok rögzítése, szerkesztése, törlése |
+| SQL-konzol | csak olvasható lekérdezések a csillagsémán, séma-böngészővel |
 | Egészségügyi riport | személy + időszak (30/90/180/365 nap vagy egyéni) → szabályalapú HTML-riport, letöltés HTML-ben és **PDF-ben**, korábbi riportok újragenerálása |
 | Export | nyers és származtatott táblák XLSX / CSV / Parquet formátumban (személy, időszak), **exporttörténet** letöltéssel, újragenerálással, törléssel |
 
@@ -89,6 +94,39 @@ csoportosított lekérdezése < 1 s, 1 év percenkénti pulzus óra × hét napj
 elemzés mentése névvel, leírással, címkékkel, felülírás, törlés; definíció letöltése/betöltése JSON-ként.
 Ha egy elemzés nem bontja személyek szerint, a kiválasztott személyre szűkítve fut (különben két ember
 napi adatai összekeverednének).
+
+## Haladó funkciók (M8)
+
+**Események / annotációk** (Események oldal, `dim_event`): megnevezés, kategória (javaslatokból vagy
+saját), kezdő- és utolsó nap, szabad szöveges megjegyzés; egy személyre vagy az egész háztartásra.
+Csak helyben tárolódnak. Megjelenésük:
+- az Elemző idővonalas ábráin (és PDF-exportjában) **sávként** a megnevezéssel (kikapcsolható);
+- **dimenzióként / szűrőként** minden napi és napon belüli témában: „Esemény”, „Esemény-kategória”,
+  „Esemény alatt / egyébként” (pl. nyugalmi pulzus betegség idején vs. egyébként). Egymást átfedő
+  események címkéi összefűzve jelennek meg; a háztartási esemény mindenkire vonatkozik (`event_day` nézet).
+
+**Eltolásos (lag) korreláció** (Haladó elemzés): két napi mérőszám bármely témából (pl. edzésterhelés →
+következő éjszaka alvásideje), −30…+30 napos eltolásprofil, Pearson és Spearman együttható mintaszámmal,
+p-értékkel és 95%-os konfidenciaintervallummal (Fisher-z; Spearmannél 1,06/(n−3) variancia), szóródási
+diagram illesztett egyenessel és tárgyilagos, leíró összefoglaló mondattal – mindig „a korreláció nem
+jelent ok-okozati összefüggést” jelzéssel. Konvenció: X a t. napon, Y a t + eltolás. napon (a riport
+összefüggés-szekciójával azonos).
+
+**Összehasonlító mód**: ugyanaz az elemzés (téma, 1–4 mérőszám, 0–1 bontás) két időszakra: utolsó N nap vs.
+előző N nap, e hónap vs. előző, egy évvel korábbi azonos időszak, két egyéni időszak, vagy **egy esemény vs.
+az azt megelőző azonos hosszú időszak**. Mutatók: A, B, különbség (B − A), változás %, mintaszám, és napi
+értékeknél standardizált különbség (Cohen-féle d, leíró jelleggel); csoportosított oszlop- és napra
+igazított vonaldiagram.
+
+**Saját nézetek** (`saved_view`): több mentett elemzés egy oldalon, sorrendben, 1–3 oszlopban; opcionálisan
+közös időszak és személy(ek), amelyek felülírják az elemzések saját beállítását. Ha egy elemzést
+időközben törölsz, a nézet többi része továbbra is megjelenik.
+
+**SQL-konzol** (SPEC 8.4, MAY): egyetlen `SELECT` / `WITH` a csillagséma tábláira (`dim_*`, `fact_*`,
+`derived_*`, `dq_*`, `event_day`). Védelem: a DuckDB elemzője szerint csak SELECT; az AST-ből kigyűjtött
+táblák/függvények engedélylistán (staging-tábla, fájl, más adatbázis, `read_csv` stb. tiltva); külön
+kurzoron, mindig visszagörgetett tranzakcióban, 15 s időkorláttal és 10 000 soros limittel; eredmény
+CSV-ben letölthető. Séma-böngésző az oszlopok leírásával (`config/export_tables.yaml` oszlopszótára).
 
 ## Egészségügyi riport (M6)
 
@@ -342,8 +380,9 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - A korrelációk p-értéke nincs többszörös összehasonlításra korrigálva (a riport jelzi).
 - Az Elemző mozgóátlaga a megjelenített időszakok (pl. hetek) számán dolgozik, nem naptári napokon;
   a naptári ablakos mutatók a „Személyes alapvonal és z-pont” témában vannak.
-- Események/annotációk, lag-korreláció, két időszak összehasonlítása, saját nézetek (műszerfal),
-  SQL-konzol: M8.
+- A lag-elemzés és az összehasonlító mód egy személyre fut; a heti WHO-téma nem választható
+  (nem napi). Sok eltolás vizsgálatakor a „legerősebb” eltolás véletlenül is adódhat (a felület jelzi).
+- Mentett elemzés riport-mellékletként (SPEC 8.3 SHOULD) még nincs; a nézetek PDF-exportja sem.
 - Egyszerre egy folyamat írhatja az adatbázist (felület VAGY parancssor).
 - PDF: az ábrák statikus képek (a HTML-riport interaktív); a Plotly-ábrák matplotlib-átírása a
   használt ábratípusokat fedi le (vonal, terület, oszlop, hisztogram, box/violin → boxplot,

@@ -18,6 +18,8 @@ joins:
   time_of_day:   "dim_time_of_day td ON td.minute_of_day = {minute}"
   activity_type: "dim_activity_type aty ON aty.activity_type_key = f.activity_type_key"
   metric:        "dim_metric dm ON dm.metric_key = f.metric_key"
+  # saját események (dim_event → event_day nézet); személyenként, a háztartási események mindenkire
+  event:         "event_day ev ON ev.date = {date} AND ev.person_key = {person}"
 
 dimensions:
   date.year:          {label_hu: Év, expr: "dd.year", join: date}
@@ -41,6 +43,9 @@ dimensions:
   stress.category:    {label_hu: Stressz-kategória, expr: "f.category"}
   hrv.method:         {label_hu: HRV-módszer, expr: "f.hrv_method"}
   metric.name:        {label_hu: Metrika, expr: "f.metric_key"}
+  event.label:        {label_hu: Esemény, expr: "coalesce(ev.labels, 'nincs esemény')", join: event}
+  event.category:     {label_hu: Esemény-kategória, expr: "coalesce(ev.categories, 'nincs esemény')", join: event}
+  event.active:       {label_hu: Esemény alatt / egyébként, expr: "CASE WHEN ev.labels IS NULL THEN 'egyébként' ELSE 'esemény alatt' END", join: event}
 
 # dátum-hierarchia (lefúrás az időfelbontással): év → negyedév → hónap → hét → nap
 hierarchies:
@@ -69,8 +74,8 @@ topics:
     date_expr: f.date
     date_key: f.date_key
     person_expr: f.person_key
-    joins: [date, source]
-    dimensions: [date.*, person, source.*]
+    joins: [date, source, event]
+    dimensions: [date.*, person, source.*, event.*]
     measures:
       steps:            {label_hu: Lépésszám, unit: lépés, expr: f.value, where: "f.metric_key = 'steps'", agg: avg}
       distance_km:      {label_hu: Távolság, unit: km, expr: f.value, where: "f.metric_key = 'distance_km'", agg: avg}
@@ -104,8 +109,8 @@ topics:
     date_expr: f.sleep_date
     date_key: f.sleep_date_key
     person_expr: ds.person_key
-    joins: [date, source]
-    dimensions: [date.*, person, source.*]
+    joins: [date, source, event]
+    dimensions: [date.*, person, source.*, event.*]
     timeline: {start: f.start_local, end: f.end_local, label: "'alvás'"}
     measures:
       asleep_h:     {label_hu: Alvásidő, unit: óra, expr: f.asleep_min / 60.0, agg: avg}
@@ -134,8 +139,8 @@ topics:
     date_key: f.date_key
     person_expr: ds.person_key
     minute_expr: "hour(f.start_local) * 60 + minute(f.start_local)"
-    joins: [date, source, activity_type, time_of_day]
-    dimensions: [date.*, person, source.*, activity.*, time.*]
+    joins: [date, source, activity_type, time_of_day, event]
+    dimensions: [date.*, person, source.*, activity.*, time.*, event.*]
     timeline: {start: f.start_local, end: f.end_local, label: aty.unified_name_hu, join: activity_type}
     measures:
       count:        {label_hu: Edzések száma, unit: db, expr: "1", agg: count}
@@ -158,8 +163,8 @@ topics:
     date_expr: f.sleep_date
     date_key: f.sleep_date_key
     person_expr: ds.person_key
-    joins: [date, source]
-    dimensions: [date.*, person, source.*, hrv.method]
+    joins: [date, source, event]
+    dimensions: [date.*, person, source.*, hrv.method, event.*]
     required_dimensions: [hrv.method]      # SDNN és RMSSD sosem keveredhet
     measures:
       hrv:      {label_hu: Éjszakai HRV, unit: ms, expr: f.hrv_avg_ms, agg: avg}
@@ -177,8 +182,8 @@ topics:
     date_key: f.date_key
     ts_expr: f.ts_local
     person_expr: ds.person_key
-    joins: [date, source, time_of_day]
-    dimensions: [date.*, person, source.*, time.*, hr.context]
+    joins: [date, source, time_of_day, event]
+    dimensions: [date.*, person, source.*, time.*, hr.context, event.*]
     measures:
       bpm:      {label_hu: Pulzus, unit: bpm, expr: f.bpm, agg: avg}
       samples:  {label_hu: Mintaszám, unit: db, expr: "1", agg: count}
@@ -193,8 +198,8 @@ topics:
     date_key: f.date_key
     ts_expr: f.ts_local
     person_expr: ds.person_key
-    joins: [date, source, time_of_day]
-    dimensions: [date.*, person, source.*, time.*, stress.category]
+    joins: [date, source, time_of_day, event]
+    dimensions: [date.*, person, source.*, time.*, stress.category, event.*]
     measures:
       stress:   {label_hu: Stressz, unit: pont, expr: f.stress, agg: avg}
       samples:  {label_hu: Mintaszám, unit: db, expr: "1", agg: count}
@@ -225,8 +230,8 @@ topics:
     date_expr: f.date
     date_key: f.date_key
     person_expr: f.person_key
-    joins: [date]
-    dimensions: [date.*, person]
+    joins: [date, event]
+    dimensions: [date.*, person, event.*]
     measures:
       load:      {label_hu: Napi terhelés, unit: pont, expr: f.load, agg: sum}
       acute:     {label_hu: Akut terhelés (7 nap), unit: pont/nap, expr: f.acute, agg: avg}
@@ -242,8 +247,8 @@ topics:
     date_expr: f.date
     date_key: f.date_key
     person_expr: f.person_key
-    joins: [date]
-    dimensions: [date.*, person, metric.name]
+    joins: [date, event]
+    dimensions: [date.*, person, metric.name, event.*]
     required_filters: [metric.name]       # egyszerre egy (vagy néhány kiválasztott) metrika
     measures:
       value:     {label_hu: Napi érték, unit: "", expr: f.value, agg: avg}
@@ -264,8 +269,8 @@ topics:
     date_expr: CAST(f.ts_local AS DATE)
     date_key: f.date_key
     person_expr: ds.person_key
-    joins: [date, source]
-    dimensions: [date.*, person, source.*]
+    joins: [date, source, event]
+    dimensions: [date.*, person, source.*, event.*]
     measures:
       weight:   {label_hu: Testsúly, unit: kg, expr: f.body_mass_kg, agg: avg}
       fat:      {label_hu: Testzsír, unit: "%", expr: f.body_fat_pct, agg: avg}

@@ -443,3 +443,4 @@ columns:
   label: {label: "Megnevezés", desc: "Az esemény megnevezése."}
   note: {label: "Megjegyzés", desc: "Szabad szöveges megjegyzés."}
   created_at: {label: "Létrehozva", desc: "Létrehozás időpontja."}
+  updated_at: {label: "Módosítva", desc: "Utolsó módosítás időpontja."}

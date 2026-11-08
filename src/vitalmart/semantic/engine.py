@@ -31,6 +31,7 @@ class Result:
     downsampled_from: int | None = None
     orders: dict[str, list[Any]] = field(default_factory=dict)   # d_i -> category order
     n_rows: int = 0
+    events: list[Any] = field(default_factory=list)        # vitalmart.events.Event
 
     @property
     def measure_cols(self) -> list[str]:
@@ -144,6 +145,14 @@ def run(con: duckdb.DuckDBPyConnection, spec: AnalysisSpec,
     if truncated:
         df = df.iloc[: q.limit]
     res = Result(spec, df, q, d0, d1, truncated=truncated, n_rows=len(df))
+    if spec.show_events and spec.time_grain != "none" and len(df):
+        from vitalmart.events import list_events
+
+        lo, hi = d0, d1
+        if lo is None and "period" in df.columns:
+            lo = pd.Timestamp(df["period"].min()).date()
+            hi = pd.Timestamp(df["period"].max()).date()
+        res.events = list_events(con, spec.persons or None, lo, hi)
     res.labels["period"] = "Időszak"
     for i, dk in enumerate(spec.dimensions):
         res.labels[f"d{i}"] = model.dimensions[dk].label_hu

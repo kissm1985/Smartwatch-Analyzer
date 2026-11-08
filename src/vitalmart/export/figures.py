@@ -302,6 +302,18 @@ def figure_png(fig: go.Figure, *, width_in: float = 7.2, height_in: float | None
             if not _draw_trace(ax, tr, i, state):
                 skipped += 1
         for shape in fig.layout.shapes or []:
+            if shape.type == "rect" and shape.xref and str(shape.xref).startswith("x") \
+                    and "domain" in str(shape.yref or ""):
+                key = (str(shape.xref), str(shape.yref).replace(" domain", ""))
+                bax = axes.get(key) or next(iter(axes.values()))
+                if getattr(bax, "name", "") != "polar":
+                    x0, x1 = (mdates.date2num(pd.Timestamp(v)) for v in (shape.x0, shape.x1))
+                    bax.axvspan(x0, x1, color=shape.fillcolor or "#f59e0b",
+                                alpha=float(shape.opacity or 0.15), linewidth=0, zorder=0)
+                    if shape.name:
+                        bax.text(x0, 0.98, f" {shape.name}", transform=bax.get_xaxis_transform(),
+                                 fontsize=6.5, va="top", ha="left", color="#92400e", clip_on=True)
+                continue
             if (shape.type == "line" and shape.y0 == shape.y1
                     and shape.xref in ("x domain", "paper")):
                 ax = next(iter(axes.values()))
