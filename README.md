@@ -21,7 +21,7 @@ külön kezelhetők (személy = elemzési dimenzió, nem felhasználói fiók). 
 | M4 – Streamlit felület (Import, Áttekintés, Adatminőség, Beállítások) | ✅ kész |
 | M5 – szemantikus réteg + Elemző (Explorer) | ✅ kész |
 | M6 – riportmotor (szabálykatalógus, szekciók, ábrák) HTML-ben | ✅ kész |
-| M7 – PDF és XLSX/CSV/Parquet export, export-előzmények | ⏳ következik |
+| M7 – PDF és XLSX/CSV/Parquet export, export-előzmények | ✅ kész |
 | M8–M9 | ⏳ |
 
 ## Telepítés
@@ -53,8 +53,8 @@ menüben váltható.
 | Adatminőség | lefedettség (havi hőtérkép), hézagok, megjelölt értékek, nem viselés, forrásváltások |
 | Beállítások | időzóna, nyelv, alvásnap-konvenció, alvási cél, alapvonal; személyek neve és profilja (érvényességi időszakokkal, pulzuszónák); elsődleges forrás metrikánként; riportküszöbök; mentés, újraszámolás, **teljes törlés** (megerősítéssel) |
 | Elemző | lásd lent |
-| Egészségügyi riport | személy + időszak (30/90/180/365 nap vagy egyéni) → szabályalapú HTML-riport, letöltés, korábbi riportok újragenerálása |
-| Export | az M7 mérföldkőben |
+| Egészségügyi riport | személy + időszak (30/90/180/365 nap vagy egyéni) → szabályalapú HTML-riport, letöltés HTML-ben és **PDF-ben**, korábbi riportok újragenerálása |
+| Export | nyers és származtatott táblák XLSX / CSV / Parquet formátumban (személy, időszak), **exporttörténet** letöltéssel, újragenerálással, törléssel |
 
 A Beállításokban tett módosítások a `data/settings.yaml`-ba kerülnek (gitignore-olt), a
 `config/*.yaml` alapértékeit nem írják felül. A feltöltött fájl a betöltés után törlődik.
@@ -116,7 +116,30 @@ z-eltérés, heti átlag, napok küszöb fölött, darab küszöb alatt, változ
 **Reprodukálhatóság**: minden riport pillanatképként (`report_snapshot`) mentődik: paraméterek,
 adatverzió (tartalom-hash), szabálykatalógus-verzió, időbélyeg. Újragenerálásnál változatlan
 adat és szabályok mellett a HTML **bájtra azonos**; a lábléc tartalmazza a verziókat. A Plotly a
-fájlba ágyazva, CDN nélkül (kb. 5 MB / riport). PDF: M7.
+fájlba ágyazva, CDN nélkül (kb. 5 MB / riport).
+
+## Export (M7)
+
+Minden export a helyi adatmappa `exports/` alkönyvtárába kerül (`reports/`, `analysis/`, `raw/`),
+és az `export_history` táblába naplózódik a paraméterekkel – az Export oldal „Exporttörténet”
+lapján letölthető, **ugyanazokkal a paraméterekkel újragenerálható** vagy törölhető.
+
+| Mit | Formátum | Tartalom |
+|---|---|---|
+| Egészségügyi riport | PDF (A4) | borító, **tartalomjegyzék** (oldalszámokkal + PDF-könyvjelzők), fejléc/lábléc az időszakkal és a verziókkal, „N / M. oldal”, minden szekció, ábrák 200 dpi PNG-ként, módszertan, küszöbök, nyilatkozat; beágyazott DejaVu Sans (magyar ékezetek, SpO₂); PDF-metaadatok. Azonos adatnál **bájtra azonos** újragenerálás. |
+| Elemző-eredmény | PDF | cím, saját megjegyzés, ábra, paraméter-összefoglaló, táblázat (max. 400 sor, felette utalás az XLSX/CSV-re), SQL, nyilatkozat |
+| Elemző-eredmény | XLSX | „Eredmény” lap (mértékegység a fejlécben) + „Leírás” lap (definíció, paraméterek, megjegyzés, SQL, JSON) |
+| Elemző-eredmény | CSV | UTF-8, mértékegység a fejlécben |
+| Nyers / származtatott adat | XLSX | „Információ” lap, táblánként egy munkalap (rögzített fejléc, autoszűrő, oszlopszélesség, dátum- és időformátum, magyar fejléc mértékegységgel), **„Adatszótár”** (minden oszlop: technikai név, egység, típus, leírás), „Mérőszámok” (dim_metric) |
+| Nyers / származtatott adat | CSV / Parquet | táblánként egy fájl (technikai oszlopnevek); több tábla esetén ZIP `adatszotar.csv`-vel |
+
+Az exportálható táblák, a lekérdezésük és az oszlopszótár a `config/export_tables.yaml`-ban
+vannak (a staging-táblák szándékosan nem exportálhatók). Az Excel munkalaponkénti sorlimitje
+(1 048 575 adatsor) fölött a tábla több munkalapra bomlik („Pulzusminták (2)” …), erről a
+fájlban és a felületen figyelmeztetés jelenik meg; nagy táblákhoz a CSV vagy a Parquet ajánlott.
+
+Az ábrák a PDF-hez matplotlibbel renderelődnek a Plotly-ábrákból (nincs szükség böngészőre
+vagy rendszerkönyvtárra; ReportLab + matplotlib tisztán Pythonból, `uv sync`-kel települ).
 
 ## Első lépések
 
@@ -153,7 +176,8 @@ További parancsok:
 | `vitalmart backup` | adatbázis-másolat a `data/backups/` mappába |
 | `vitalmart wipe --yes` | **minden** adat törlése (adatbázis, exportok, mentések, beállítások) |
 | `vitalmart ui [--port 8501]` | grafikus felület (csak 127.0.0.1) |
-| `vitalmart report [--person KOD] [--days 90 \| --from ÉÉÉÉ-HH-NN --to ÉÉÉÉ-HH-NN] [--out f.html]` | egészségügyi riport (HTML) |
+| `vitalmart report [--person KOD] [--days 90 \| --from ÉÉÉÉ-HH-NN --to ÉÉÉÉ-HH-NN] [--out f.html] [--pdf]` | egészségügyi riport (HTML, `--pdf`-fel PDF is) |
+| `vitalmart export [--tables T …] [--person KOD …] [--from …] [--to …] [--format xlsx\|csv\|parquet]` | adatexport; `--list` a táblák, `--history` a korábbi exportok, `--regenerate ID` újrakészítés |
 
 Globális kapcsolók: `--data-dir`, `--config`, `-v` (technikai napló).
 
@@ -289,7 +313,7 @@ elsődleges forrás váltása (legalább `quality.switch_min_days` napig tartó 
 A DuckDB memóriakorlátja `config/app.yaml` → `database.memory_limit` (alapérték 2 GB);
 e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd lejjebb.
 
-## Ismert korlátok (M1–M6)
+## Ismert korlátok (M1–M7)
 
 - A core réteg minden importnál **teljesen** újraépül (gyors, de nem inkrementális – SPEC 10.3 SHOULD, M9).
 - Az Apple napi összesítő (`fact_daily_summary`) forrásonként külön sor (óra és iPhone
@@ -313,7 +337,7 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - Garmin: a testsúly a Connect-beállításból (`USER_SETTING`) is származhat, nem csak mérlegből.
 - A Streamlit számbeviteli mezői tizedespontot mutatnak (a böngésző-komponens korlátja);
   minden kijelzett szám, dátum és idő magyar formátumú (tizedesvessző, ÉÉÉÉ.HH.NN., 24 órás).
-- A riport egyelőre csak magyar nyelvű és HTML (a PDF az M7-ben); a riport-szövegek egy része
+- A riport egyelőre csak magyar nyelvű; a riport-szövegek egy része
   (nem orvosi leíró mondatok) az i18n-fájlokban, az orvosi tartalmú szövegek a `rules.yaml`-ban vannak.
 - A korrelációk p-értéke nincs többszörös összehasonlításra korrigálva (a riport jelzi).
 - Az Elemző mozgóátlaga a megjelenített időszakok (pl. hetek) számán dolgozik, nem naptári napokon;
@@ -321,6 +345,13 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - Események/annotációk, lag-korreláció, két időszak összehasonlítása, saját nézetek (műszerfal),
   SQL-konzol: M8.
 - Egyszerre egy folyamat írhatja az adatbázist (felület VAGY parancssor).
+- PDF: az ábrák statikus képek (a HTML-riport interaktív); a Plotly-ábrák matplotlib-átírása a
+  használt ábratípusokat fedi le (vonal, terület, oszlop, hisztogram, box/violin → boxplot,
+  hőtérkép, radar, idővonal); ismeretlen típusnál az ábrán jelzés jelenik meg.
+- A nagyon nagy XLSX-exportok (milliós sorszám) lassúak (kb. 1 perc / millió sor) – erre a
+  felület figyelmeztet; CSV/Parquet ajánlott.
+- A CSV vesszővel tagolt, tizedesponttal (gépi feldolgozásra); a magyar Excel-megnyitáshoz az
+  XLSX ajánlott.
 - Csak FIT Monitor-fájlokból (Connect-export nélkül) még nem képződik napi összesítő, így
   származtatott napi mutató sem; a pulzus- és stresszminták és az adatminőségi jelek megvannak.
 - Az ACWR terhelési módszere személyen belül változhat (pl. Garmin TRIMP vs. Apple időtartam);

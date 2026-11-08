@@ -16,3 +16,7 @@ __pycache__/
 .coverage
 htmlcov/
 dist/
+
+# Exportfájlok (egészségügyi adat)
+*.xlsx
+*.parquet

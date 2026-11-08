@@ -137,7 +137,8 @@ def build_figure(res: Result) -> go.Figure:
         long = _melt(res, df, None if x == "period" else x, series, facet, ms)
         fn = px.box if chart == "box" else px.violin
         fig = fn(long, x=cat if cat in long.columns else "_m", y="_v",
-                 color="_m" if len(ms) > 1 else None, **facet_kw, labels={"_v": ""})
+                 color="_m" if len(ms) > 1 else None, **facet_kw,
+                 labels={"_v": "", "_m": "", **{c: res.labels.get(c, c) for c in res.dim_cols}})
         return _finish(fig)
 
     if chart == "heatmap":

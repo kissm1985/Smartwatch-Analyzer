@@ -1,0 +1,445 @@
+# Exportálható táblák (SPEC 8.2) – nyers / származtatott adatok XLSX, CSV, Parquet formátumban.
+#
+# Minden táblánál:
+#   sql:    a lekérdezés törzse (SELECT … FROM … JOIN …) WHERE nélkül
+#   date:   dátum-kifejezés (DATE) az időszakszűréshez – üres: nincs időszakszűrés
+#   person: személykulcs-kifejezés a személyszűréshez – üres: nincs személyszűrés
+#   order:  rendezés
+# A felhasználói értékek (időszak, személyek) mindig SQL-paraméterek; a táblanév csak
+# ebből a listából választható.
+
+version: 1
+
+tables:
+  fact_daily_summary:
+    label_hu: "Napi összesítők"
+    sheet: "Napi összesítő"
+    group: fact
+    sql: |
+      SELECT d.date, s.person_key, s.vendor, t.* EXCLUDE (date_key, import_batch_id)
+      FROM fact_daily_summary t JOIN dim_date d USING (date_key)
+      JOIN dim_source s ON s.source_key = t.source_key
+    date: d.date
+    person: s.person_key
+    order: d.date, t.source_key
+
+  fact_sleep_session:
+    label_hu: "Alvások"
+    sheet: "Alvás"
+    group: fact
+    sql: |
+      SELECT s.person_key, s.vendor, t.* EXCLUDE (sleep_date_key, import_batch_id)
+      FROM fact_sleep_session t JOIN dim_source s ON s.source_key = t.source_key
+    date: t.sleep_date
+    person: s.person_key
+    order: t.start_utc
+
+  fact_sleep_stage_interval:
+    label_hu: "Alvásfázis-szakaszok"
+    sheet: "Alvásfázisok"
+    group: fact
+    sql: |
+      SELECT CAST(t.start_local AS DATE) AS date, s.person_key, t.* EXCLUDE (import_batch_id)
+      FROM fact_sleep_stage_interval t JOIN dim_source s ON s.source_key = t.source_key
+    date: CAST(t.start_local AS DATE)
+    person: s.person_key
+    order: t.start_utc
+
+  fact_hrv_nightly:
+    label_hu: "Éjszakai HRV"
+    sheet: "HRV"
+    group: fact
+    sql: |
+      SELECT s.person_key, s.vendor, t.* EXCLUDE (sleep_date_key, import_batch_id)
+      FROM fact_hrv_nightly t JOIN dim_source s ON s.source_key = t.source_key
+    date: t.sleep_date
+    person: s.person_key
+    order: t.sleep_date, t.source_key
+
+  fact_heart_rate_sample:
+    label_hu: "Pulzusminták (nagy tábla)"
+    sheet: "Pulzusminták"
+    group: fact
+    large: true
+    sql: |
+      SELECT d.date, s.person_key, t.* EXCLUDE (date_key, import_batch_id)
+      FROM fact_heart_rate_sample t JOIN dim_date d USING (date_key)
+      JOIN dim_source s ON s.source_key = t.source_key
+    date: d.date
+    person: s.person_key
+    order: t.ts_utc, t.source_key
+
+  fact_stress_sample:
+    label_hu: "Stresszminták"
+    sheet: "Stresszminták"
+    group: fact
+    large: true
+    sql: |
+      SELECT d.date, s.person_key, t.* EXCLUDE (date_key, import_batch_id)
+      FROM fact_stress_sample t JOIN dim_date d USING (date_key)
+      JOIN dim_source s ON s.source_key = t.source_key
+    date: d.date
+    person: s.person_key
+    order: t.ts_utc, t.source_key
+
+  fact_measurement:
+    label_hu: "Egyéb mérések (általános tény)"
+    sheet: "Mérések"
+    group: fact
+    large: true
+    sql: |
+      SELECT d.date, s.person_key, m.name_hu AS metric_name, t.* EXCLUDE (date_key, import_batch_id, record_nk)
+      FROM fact_measurement t JOIN dim_date d USING (date_key)
+      JOIN dim_source s ON s.source_key = t.source_key
+      LEFT JOIN dim_metric m ON m.metric_key = t.metric_key
+    date: d.date
+    person: s.person_key
+    order: t.metric_key, t.ts_utc
+
+  fact_activity:
+    label_hu: "Edzések / tevékenységek"
+    sheet: "Edzések"
+    group: fact
+    sql: |
+      SELECT d.date, s.person_key, a.unified_name_hu AS activity_name, t.* EXCLUDE (date_key, import_batch_id)
+      FROM fact_activity t JOIN dim_date d USING (date_key)
+      JOIN dim_source s ON s.source_key = t.source_key
+      LEFT JOIN dim_activity_type a ON a.activity_type_key = t.activity_type_key
+    date: d.date
+    person: s.person_key
+    order: t.start_utc
+
+  fact_activity_hr_zone:
+    label_hu: "Edzések pulzuszónái"
+    sheet: "Pulzuszónák"
+    group: fact
+    sql: |
+      SELECT CAST(a.start_local AS DATE) AS date, s.person_key, t.* EXCLUDE (import_batch_id)
+      FROM fact_activity_hr_zone t
+      JOIN fact_activity a ON a.activity_id = t.activity_id AND a.source_key = t.source_key
+      JOIN dim_source s ON s.source_key = t.source_key
+    date: CAST(a.start_local AS DATE)
+    person: s.person_key
+    order: a.start_utc, t.zone
+
+  fact_body_measure:
+    label_hu: "Testösszetétel"
+    sheet: "Testösszetétel"
+    group: fact
+    sql: |
+      SELECT d.date, s.person_key, t.* EXCLUDE (date_key, import_batch_id)
+      FROM fact_body_measure t JOIN dim_date d USING (date_key)
+      JOIN dim_source s ON s.source_key = t.source_key
+    date: d.date
+    person: s.person_key
+    order: t.ts_utc
+
+  fact_vo2max:
+    label_hu: "VO₂max"
+    sheet: "VO2max"
+    group: fact
+    sql: |
+      SELECT d.date, s.person_key, t.* EXCLUDE (date_key, import_batch_id)
+      FROM fact_vo2max t JOIN dim_date d USING (date_key)
+      JOIN dim_source s ON s.source_key = t.source_key
+    date: d.date
+    person: s.person_key
+    order: d.date
+
+  derived_person_daily:
+    label_hu: "Személyenkénti napi idősorok (elsődleges forrás)"
+    sheet: "Napi idősorok"
+    group: derived
+    sql: |
+      SELECT t.date, t.person_key, t.metric_key, m.name_hu AS metric_name, m.unit, t.value,
+             t.source_key, t.n_sources
+      FROM derived_person_daily t LEFT JOIN dim_metric m ON m.metric_key = t.metric_key
+    date: t.date
+    person: t.person_key
+    order: t.metric_key, t.date
+
+  derived_daily_stats:
+    label_hu: "Mozgóátlagok, alapvonal, z-pontszám"
+    sheet: "Napi statisztikák"
+    group: derived
+    sql: |
+      SELECT t.* EXCLUDE (date_key) FROM derived_daily_stats t
+    date: t.date
+    person: t.person_key
+    order: t.metric_key, t.date
+
+  derived_weekly_activity:
+    label_hu: "Heti aktivitás (WHO-egyenértékes percek)"
+    sheet: "Heti aktivitás"
+    group: derived
+    sql: |
+      SELECT t.* FROM derived_weekly_activity t
+    date: t.week_start
+    person: t.person_key
+    order: t.week_start
+
+  derived_sleep_regularity:
+    label_hu: "Alvásrendszeresség, alvási adósság"
+    sheet: "Alvásrendszeresség"
+    group: derived
+    sql: |
+      SELECT t.* EXCLUDE (date_key) FROM derived_sleep_regularity t
+    date: t.date
+    person: t.person_key
+    order: t.date
+
+  derived_training_load:
+    label_hu: "Edzésterhelés (akut:krónikus arány)"
+    sheet: "Edzésterhelés"
+    group: derived
+    sql: |
+      SELECT t.* EXCLUDE (date_key) FROM derived_training_load t
+    date: t.date
+    person: t.person_key
+    order: t.date
+
+  dq_coverage:
+    label_hu: "Adatminőség: lefedettség"
+    sheet: "DQ lefedettség"
+    group: quality
+    sql: |
+      SELECT t.* FROM dq_coverage t
+    date: ""
+    person: t.person_key
+    order: t.person_key, t.source_key, t.metric_key
+
+  dq_gap:
+    label_hu: "Adatminőség: adathiányos időszakok"
+    sheet: "DQ hiányok"
+    group: quality
+    sql: |
+      SELECT t.* FROM dq_gap t
+    date: t.gap_start
+    person: t.person_key
+    order: t.gap_start
+
+  dq_nonwear:
+    label_hu: "Adatminőség: nem viselt / töltési időszakok"
+    sheet: "DQ nem viselt"
+    group: quality
+    sql: |
+      SELECT t.* FROM dq_nonwear t
+    date: CAST(t.start_local AS DATE)
+    person: t.person_key
+    order: t.start_utc
+
+  dim_source:
+    label_hu: "Adatforrások (eszközök)"
+    sheet: "Források"
+    group: dimension
+    sql: |
+      SELECT t.* FROM dim_source t
+    date: ""
+    person: t.person_key
+    order: t.source_key
+
+  dim_activity_type:
+    label_hu: "Tevékenységtípusok"
+    sheet: "Tevékenységtípusok"
+    group: dimension
+    sql: |
+      SELECT t.* FROM dim_activity_type t
+    date: ""
+    person: ""
+    order: t.activity_type_key
+
+  dim_event:
+    label_hu: "Események / megjegyzések"
+    sheet: "Események"
+    group: dimension
+    sql: |
+      SELECT t.* FROM dim_event t
+    date: t.start_date
+    person: ""
+    order: t.start_date
+
+# Alapértelmezett kiválasztás az Export oldalon
+default_tables:
+  - fact_daily_summary
+  - fact_sleep_session
+  - fact_hrv_nightly
+  - fact_activity
+  - derived_person_daily
+
+# Oszlopszótár: magyar megnevezés, mértékegység, leírás. A mértékegység a fejlécbe kerül
+# ("Lépésszám [lépés]"); ami itt nem szerepel, annál a technikai név és – ha van – az
+# utótag szerinti mértékegység (suffix_units) jelenik meg.
+suffix_units:
+  _min: perc
+  _kcal: kcal
+  _km: km
+  _kmh: km/h
+  _pct: "%"
+  _ms: ms
+  _h: óra
+  _kg: kg
+  _cm: cm
+  _m: m
+
+columns:
+  date: {label: "Dátum", desc: "Helyi naptári nap (alvásnál: az ébredés napja, ha nincs külön jelölve)."}
+  person_key: {label: "Személy", desc: "A háztartás tagjának azonosítója (dim_person)."}
+  vendor: {label: "Gyártó", desc: "Az adatforrás gyártója (apple / garmin)."}
+  source_key: {label: "Forrás", desc: "Az eszköz / alkalmazás belső kulcsa (dim_source)."}
+  source_name: {label: "Forrás neve", desc: "Az eszköz vagy alkalmazás neve az exportban."}
+  device_type: {label: "Eszköztípus", desc: "watch / phone / scale / app / other."}
+  device_model: {label: "Eszközmodell", desc: "Az eszköz modellje, ha az export tartalmazza."}
+  quality_flag: {label: "Minőségjelző", desc: "ok / suspect / invalid / duplicate / gap_filled – a betöltéskori validáció eredménye."}
+  ts_utc: {label: "Időpont (UTC)", desc: "A mérés időpontja koordinált világidőben."}
+  ts_local: {label: "Időpont (helyi)", desc: "A mérés időpontja helyi időben."}
+  tz_offset_min: {label: "Időzóna-eltolás", unit: "perc", desc: "A helyi idő eltérése az UTC-től percben."}
+  start_utc: {label: "Kezdet (UTC)", desc: "Kezdő időpont UTC-ben."}
+  end_utc: {label: "Vég (UTC)", desc: "Záró időpont UTC-ben."}
+  start_local: {label: "Kezdet (helyi)", desc: "Kezdő időpont helyi időben."}
+  end_local: {label: "Vég (helyi)", desc: "Záró időpont helyi időben."}
+  end_ts_utc: {label: "Vég (UTC)", desc: "Időtartamos mérés vége UTC-ben."}
+  end_ts_local: {label: "Vég (helyi)", desc: "Időtartamos mérés vége helyi időben."}
+  minute_of_day: {label: "Nap perce", unit: "perc", desc: "A helyi idő éjfél óta eltelt perceinek száma (0–1439)."}
+  steps: {label: "Lépésszám", unit: "lépés", desc: "Napi lépésszám."}
+  distance_km: {label: "Távolság", unit: "km", desc: "Megtett távolság."}
+  active_kcal: {label: "Aktív energia", unit: "kcal", desc: "Mozgással elhasznált energia (gyártói becslés)."}
+  basal_kcal: {label: "Nyugalmi energia", unit: "kcal", desc: "Alapanyagcsere becsült energiája."}
+  total_kcal: {label: "Összes energia", unit: "kcal", desc: "Aktív + nyugalmi energia."}
+  flights_climbed: {label: "Megmászott emeletek", unit: "emelet", desc: "Megmászott emeletek száma."}
+  exercise_min: {label: "Edzésperc", unit: "perc", desc: "Apple Edzés-gyűrű percei."}
+  stand_min: {label: "Állás", unit: "perc", desc: "Állással töltött idő (Apple)."}
+  moderate_min: {label: "Mérsékelt intenzitás", unit: "perc", desc: "Mérsékelt intenzitású percek (Garmin)."}
+  vigorous_min: {label: "Intenzív intenzitás", unit: "perc", desc: "Intenzív percek (Garmin)."}
+  resting_hr: {label: "Nyugalmi pulzus", unit: "bpm", desc: "A gyártó által számolt napi nyugalmi pulzus."}
+  walking_hr_avg: {label: "Séta közbeni pulzus", unit: "bpm", desc: "Átlagos pulzus séta közben (Apple)."}
+  hr_min: {label: "Legalacsonyabb pulzus", unit: "bpm", desc: "Legalacsonyabb pulzus az adott egységben."}
+  hr_max: {label: "Legmagasabb pulzus", unit: "bpm", desc: "Legmagasabb pulzus az adott egységben."}
+  hr_avg: {label: "Átlagos pulzus", unit: "bpm", desc: "Átlagos pulzus az adott egységben."}
+  hr_sample_count: {label: "Pulzusminták száma", unit: "db", desc: "A napi pulzusminták száma."}
+  stress_avg: {label: "Átlagos stressz", unit: "pont", desc: "Garmin stresszpontszám (0–100) átlaga."}
+  body_battery_max: {label: "Body Battery max.", unit: "pont", desc: "Garmin Body Battery napi maximuma."}
+  body_battery_min: {label: "Body Battery min.", unit: "pont", desc: "Garmin Body Battery napi minimuma."}
+  spo2_avg: {label: "Átlagos SpO₂", unit: "%", desc: "Átlagos véroxigén-telítettség (csuklón mért, tájékoztató)."}
+  spo2_min: {label: "Legalacsonyabb SpO₂", unit: "%", desc: "Legalacsonyabb véroxigén-telítettség (tájékoztató)."}
+  respiratory_rate_avg: {label: "Légzésszám", unit: "légzés/perc", desc: "Átlagos légzésszám."}
+  session_id: {label: "Alvás azonosító", desc: "Az alvási szakasz belső azonosítója."}
+  sleep_date: {label: "Alvásnap", desc: "Az alvás napja (alapértelmezés: az ébredés napja)."}
+  is_main: {label: "Fő alvás", desc: "Igaz, ha ez a nap leghosszabb (fő) alvása."}
+  start_tz_offset_min: {label: "Kezdeti időzóna-eltolás", unit: "perc", desc: "Időzóna-eltolás az alvás kezdetekor."}
+  end_tz_offset_min: {label: "Záró időzóna-eltolás", unit: "perc", desc: "Időzóna-eltolás az ébredéskor."}
+  in_bed_min: {label: "Ágyban töltött idő", unit: "perc", desc: "Ágyban töltött idő."}
+  asleep_min: {label: "Alvásidő", unit: "perc", desc: "Tényleges alvásidő (ébrenlét nélkül)."}
+  deep_min: {label: "Mélyalvás", unit: "perc", desc: "Mélyalvás ideje (eszközfüggő becslés)."}
+  light_min: {label: "Könnyű alvás", unit: "perc", desc: "Könnyű / core alvás ideje (eszközfüggő becslés)."}
+  rem_min: {label: "REM", unit: "perc", desc: "REM-alvás ideje (eszközfüggő becslés)."}
+  awake_min: {label: "Ébrenlét", unit: "perc", desc: "Ébren töltött idő az alvás közben."}
+  unspecified_min: {label: "Nem bontott alvás", unit: "perc", desc: "Fázis nélkül rögzített alvás."}
+  efficiency_pct: {label: "Alváshatékonyság", unit: "%", desc: "Alvásidő / ágyban töltött idő."}
+  sleep_score: {label: "Alváspontszám", unit: "pont", desc: "Gyártói alváspontszám (Garmin)."}
+  has_stages: {label: "Van fázisbontás", desc: "Igaz, ha az alvás fázisokra bontva érkezett."}
+  stage_key: {label: "Alvásfázis", desc: "deep / light / rem / awake / in_bed / unspecified."}
+  duration_min: {label: "Időtartam", unit: "perc", desc: "Időtartam percben."}
+  hrv_method: {label: "HRV-módszer", desc: "RMSSD vagy SDNN – a két módszer értékei nem hasonlíthatók össze."}
+  hrv_avg_ms: {label: "HRV átlag", unit: "ms", desc: "Éjszakai HRV átlaga a megadott módszerrel."}
+  hrv_7d_avg_ms: {label: "HRV 7 napos átlag", unit: "ms", desc: "Gyártó által számolt 7 napos átlag."}
+  device_status: {label: "HRV státusz", desc: "Gyártói HRV-státusz (Garmin)."}
+  baseline_low_ms: {label: "HRV alapvonal alsó", unit: "ms", desc: "Gyártói alapvonal alsó határa."}
+  baseline_high_ms: {label: "HRV alapvonal felső", unit: "ms", desc: "Gyártói alapvonal felső határa."}
+  sample_count: {label: "Mintaszám", unit: "db", desc: "A számításhoz felhasznált minták száma."}
+  bpm: {label: "Pulzus", unit: "bpm", desc: "Pulzusminta."}
+  context: {label: "Környezet", desc: "A mérés körülménye (pl. nyugalom, edzés), ha ismert."}
+  stress: {label: "Stressz", unit: "pont", desc: "Garmin stresszpontszám (0–100)."}
+  category: {label: "Kategória", desc: "Kategória."}
+  metric_key: {label: "Mérőszám kulcs", desc: "A mérőszám technikai kulcsa (lásd: Mérőszámok munkalap)."}
+  metric_name: {label: "Mérőszám", desc: "A mérőszám magyar neve."}
+  value: {label: "Érték", desc: "A mérés értéke a mérőszám mértékegységében."}
+  value_text: {label: "Szöveges érték", desc: "Kategória jellegű mérés értéke."}
+  unit: {label: "Mértékegység", desc: "Az érték mértékegysége."}
+  activity_id: {label: "Edzés azonosító", desc: "Az edzés belső azonosítója."}
+  activity_type_key: {label: "Tevékenységtípus kulcs", desc: "Gyártói típus kulcsa (dim_activity_type)."}
+  activity_name: {label: "Tevékenység", desc: "Egységesített tevékenységnév."}
+  energy_kcal: {label: "Energia", unit: "kcal", desc: "Az edzés során elhasznált energia."}
+  avg_speed_kmh: {label: "Átlagsebesség", unit: "km/h", desc: "Átlagsebesség."}
+  pace_min_per_km: {label: "Tempó", unit: "perc/km", desc: "Átlagos tempó."}
+  elevation_gain_m: {label: "Szintemelkedés", unit: "m", desc: "Összes emelkedés."}
+  aerobic_effect: {label: "Aerob hatás", unit: "0–5", desc: "Garmin aerob edzéshatás."}
+  anaerobic_effect: {label: "Anaerob hatás", unit: "0–5", desc: "Garmin anaerob edzéshatás."}
+  training_load: {label: "Edzésterhelés", unit: "pont", desc: "Gyártói edzésterhelés-pontszám."}
+  vo2max: {label: "VO₂max", unit: "ml/kg/perc", desc: "Becsült maximális oxigénfelvétel."}
+  recovery_time_h: {label: "Regenerációs idő", unit: "óra", desc: "Gyártói javasolt regenerációs idő."}
+  hr_recovery_1min: {label: "Pulzus-visszaesés 1 perc", unit: "bpm", desc: "Pulzuscsökkenés az edzés után 1 perccel."}
+  zone: {label: "Pulzuszóna", desc: "Pulzuszóna sorszáma (0 = 1. zóna alatt)."}
+  seconds_in_zone: {label: "Zónában töltött idő", unit: "mp", desc: "A zónában töltött másodpercek."}
+  body_mass_kg: {label: "Testsúly", unit: "kg", desc: "Testsúly."}
+  body_fat_pct: {label: "Testzsír", unit: "%", desc: "Testzsír-arány."}
+  bmi: {label: "BMI", unit: "kg/m²", desc: "Testtömegindex."}
+  bmi_is_computed: {label: "BMI számított", desc: "Igaz, ha a BMI-t a rendszer számolta testsúlyból és magasságból."}
+  lean_mass_kg: {label: "Zsírmentes tömeg", unit: "kg", desc: "Zsírmentes testtömeg."}
+  muscle_mass_kg: {label: "Izomtömeg", unit: "kg", desc: "Izomtömeg."}
+  body_water_pct: {label: "Testvíz", unit: "%", desc: "Testvíz-arány."}
+  n_sources: {label: "Források száma", unit: "db", desc: "Hány forrás adott értéket az adott napra."}
+  n7: {label: "Érvényes napok (7)", unit: "nap", desc: "Érvényes napok száma a 7 napos ablakban."}
+  ma7: {label: "7 napos mozgóátlag", desc: "7 napos mozgóátlag (a mérőszám egységében)."}
+  med7: {label: "7 napos medián", desc: "7 napos mozgó medián."}
+  n28: {label: "Érvényes napok (28)", unit: "nap", desc: "Érvényes napok száma a 28 napos ablakban."}
+  ma28: {label: "28 napos mozgóátlag", desc: "28 napos mozgóátlag."}
+  med28: {label: "28 napos medián", desc: "28 napos mozgó medián."}
+  trend_7v28: {label: "Trend (7 vs. 28 nap)", desc: "A 7 és 28 napos átlag különbsége."}
+  bl_n: {label: "Alapvonal napjai", unit: "nap", desc: "A személyes alapvonalhoz felhasznált napok."}
+  bl_mean: {label: "Alapvonal átlag", desc: "Személyes alapvonal (gördülő, a napot megelőző időszakból)."}
+  bl_std: {label: "Alapvonal szórás", desc: "Az alapvonal szórása."}
+  bl_median: {label: "Alapvonal medián", desc: "Az alapvonal mediánja."}
+  bl_mad: {label: "Alapvonal MAD", desc: "Az alapvonal medián abszolút eltérése."}
+  z_score: {label: "z-pontszám", desc: "Eltérés az alapvonaltól szórásegységben."}
+  robust_z: {label: "Robusztus z", desc: "Medián/MAD alapú eltérés."}
+  outside_band: {label: "Sávon kívül", desc: "Igaz, ha az érték kívül esik az alapvonal ± sávon."}
+  week_start: {label: "Hét kezdete", desc: "A hét hétfője."}
+  iso_year: {label: "ISO év", desc: "ISO-év."}
+  iso_week: {label: "ISO hét", desc: "ISO-hét sorszáma."}
+  days_with_data: {label: "Napok adattal", unit: "nap", desc: "A héten adatot tartalmazó napok."}
+  who_equiv_min: {label: "WHO-egyenértékes perc", unit: "perc", desc: "Mérsékelt + 2 × intenzív perc."}
+  who_method: {label: "WHO-számítás módja", desc: "A heti percek forrása (Garmin intenzitás / Apple Edzés-gyűrű)."}
+  activity_count: {label: "Edzések száma", unit: "db", desc: "Edzések száma a héten."}
+  active_days: {label: "Aktív napok", unit: "nap", desc: "Edzéses napok száma."}
+  strength_days: {label: "Erősítő napok", unit: "nap", desc: "Erősítő edzéses napok."}
+  rest_days: {label: "Pihenőnapok", unit: "nap", desc: "Edzés nélküli napok."}
+  rest_days_std4w: {label: "Pihenőnapok szórása (4 hét)", unit: "nap", desc: "A pihenőnapok számának 4 hetes szórása."}
+  total_load: {label: "Heti terhelés", desc: "A napi terhelések összege."}
+  bedtime_min: {label: "Lefekvés", unit: "perc", desc: "Lefekvés időpontja percben (helyi idő, éjfél utáni időpontoknál 1440 felett)."}
+  waketime_min: {label: "Ébredés", unit: "perc", desc: "Ébredés időpontja percben (helyi idő)."}
+  sleep_min: {label: "Alvásidő", unit: "perc", desc: "Alvásidő."}
+  bedtime_std7: {label: "Lefekvés szórása (7)", unit: "perc", desc: "A lefekvési időpont 7 napos szórása."}
+  bedtime_std14: {label: "Lefekvés szórása (14)", unit: "perc", desc: "A lefekvési időpont 14 napos szórása."}
+  waketime_std7: {label: "Ébredés szórása (7)", unit: "perc", desc: "Az ébredési időpont 7 napos szórása."}
+  waketime_std14: {label: "Ébredés szórása (14)", unit: "perc", desc: "Az ébredési időpont 14 napos szórása."}
+  debt7_min: {label: "Alvási adósság (7)", unit: "perc", desc: "Az alváscélhoz viszonyított hiány az utolsó 7 éjszakán."}
+  debt14_min: {label: "Alvási adósság (14)", unit: "perc", desc: "Az alváscélhoz viszonyított hiány az utolsó 14 éjszakán."}
+  load: {label: "Napi terhelés", desc: "Napi edzésterhelés (módszer: load_method)."}
+  load_method: {label: "Terhelés módszere", desc: "zones (pulzuszónákból) vagy duration (időtartamból)."}
+  is_rest_day: {label: "Pihenőnap", desc: "Igaz, ha aznap nem volt edzés."}
+  acute: {label: "Akut terhelés", desc: "7 napos átlagos terhelés."}
+  chronic: {label: "Krónikus terhelés", desc: "28 napos átlagos terhelés."}
+  acwr: {label: "Akut:krónikus arány", desc: "Akut / krónikus terhelés (módszertani közelítés)."}
+  acwr_valid: {label: "Arány érvényes", desc: "Igaz, ha elegendő előzmény állt rendelkezésre."}
+  first_date: {label: "Első nap", desc: "Az első nap adattal."}
+  last_date: {label: "Utolsó nap", desc: "Az utolsó nap adattal."}
+  days_in_span: {label: "Napok az időszakban", unit: "nap", desc: "Az első és utolsó nap közötti napok."}
+  coverage_pct: {label: "Lefedettség", unit: "%", desc: "Napok adattal / napok az időszakban."}
+  gap_start: {label: "Hiány kezdete", desc: "Az adathiányos időszak első napja."}
+  gap_end: {label: "Hiány vége", desc: "Az adathiányos időszak utolsó napja."}
+  gap_days: {label: "Hiány hossza", unit: "nap", desc: "Az adathiányos időszak hossza."}
+  kind: {label: "Típus", desc: "nonwear (nem viselt) vagy charging (töltés)."}
+  minutes: {label: "Időtartam", unit: "perc", desc: "Időtartam percben."}
+  samples: {label: "Minták", unit: "db", desc: "Minták száma."}
+  hardware: {label: "Hardver", desc: "Hardververzió."}
+  software_version: {label: "Szoftververzió", desc: "Szoftververzió."}
+  person_conflict: {label: "Személyütközés", desc: "Igaz, ha a forrás több személy importjában is szerepelt."}
+  original_name: {label: "Eredeti név", desc: "A gyártói tevékenységnév."}
+  unified_type: {label: "Egységes típus", desc: "Egységesített tevékenységtípus."}
+  unified_name_hu: {label: "Tevékenység", desc: "Egységesített magyar név."}
+  event_id: {label: "Esemény azonosító", desc: "Az esemény belső azonosítója."}
+  start_date: {label: "Kezdőnap", desc: "Az esemény első napja."}
+  end_date: {label: "Utolsó nap", desc: "Az esemény utolsó napja."}
+  label: {label: "Megnevezés", desc: "Az esemény megnevezése."}
+  note: {label: "Megjegyzés", desc: "Szabad szöveges megjegyzés."}
+  created_at: {label: "Létrehozva", desc: "Létrehozás időpontja."}

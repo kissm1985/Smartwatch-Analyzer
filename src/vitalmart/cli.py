@@ -182,9 +182,52 @@ def cmd_report(cfg: AppConfig, args: argparse.Namespace) -> int:
             end = date.fromisoformat(args.date_to)
             start = end - (rng[1] - rng[0])
     out = Path(args.out).expanduser() if args.out else None
-    _rep, _html, path = generate(con, cfg, person, start, end, out=out)
-    con.close()
+    rep, _html, path = generate(con, cfg, person, start, end,
+                                out=out.with_suffix(".html") if out and args.pdf else out)
     print(t("report.ui.saved_to", path=path))
+    if args.pdf:
+        from vitalmart.export.service import export_report_pdf
+
+        res = export_report_pdf(con, cfg, person, start, end, generated_at=rep.generated_at,
+                                out=out.with_suffix(".pdf") if out else None)
+        print(t("report.ui.saved_to", path=res.path))
+    con.close()
+    return 0
+
+
+def cmd_export(cfg: AppConfig, args: argparse.Namespace) -> int:
+    from datetime import date
+
+    from vitalmart.export import service, tabular
+
+    reg = tabular.load_registry()
+    if args.list:
+        for k, tb in reg.tables.items():
+            print(f"{k:28s} {tb.label_hu}")
+        return 0
+    con = db.connect(cfg)
+    try:
+        if args.regenerate:
+            res = service.regenerate(con, cfg, args.regenerate)
+        elif args.history:
+            for r in service.list_history(con).itertuples():
+                print(f"{r.export_id}  {r.created_at:%Y-%m-%d %H:%M:%S}  {r.kind:8s} "
+                      f"{r.fmt:7s} {r.title}")
+            return 0
+        else:
+            sel = tabular.Selection(
+                tables=args.tables or reg.default_tables, persons=args.person or [],
+                date_from=date.fromisoformat(args.date_from) if args.date_from else None,
+                date_to=date.fromisoformat(args.date_to) if args.date_to else None)
+            res = service.export_raw(con, cfg, sel, args.format)
+    except (ValueError, KeyError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    finally:
+        con.close()
+    for w in res.warnings:
+        print(w, file=sys.stderr)
+    print(t("export.ui.done", path=res.path, rows=res.rows))
     return 0
 
 
@@ -241,8 +284,22 @@ def build_parser() -> argparse.ArgumentParser:
     rep.add_argument("--to", dest="date_to", help="ÉÉÉÉ-HH-NN")
     rep.add_argument("--days", type=int, default=90,
                      help="időszak hossza napban, ha nincs --from (alapértelmezés: 90)")
-    rep.add_argument("--out", help="kimeneti HTML-fájl")
+    rep.add_argument("--out", help="kimeneti fájl (HTML; --pdf esetén mellé PDF is)")
+    rep.add_argument("--pdf", action="store_true", help="PDF is készüljön (exports/reports)")
     rep.set_defaults(func=cmd_report)
+
+    exp = sub.add_parser("export", help="nyers / származtatott adatok exportja (XLSX/CSV/Parquet)")
+    exp.add_argument("--tables", nargs="+", help="táblák (lásd --list); alapértelmezés: "
+                                                "export_tables.yaml default_tables")
+    exp.add_argument("--person", nargs="+", help="személykód(ok); alapértelmezés: mindenki")
+    exp.add_argument("--from", dest="date_from", help="ÉÉÉÉ-HH-NN")
+    exp.add_argument("--to", dest="date_to", help="ÉÉÉÉ-HH-NN")
+    exp.add_argument("--format", choices=["xlsx", "csv", "parquet"], default="xlsx")
+    exp.add_argument("--list", action="store_true", help="exportálható táblák listája")
+    exp.add_argument("--history", action="store_true", help="korábbi exportok listája")
+    exp.add_argument("--regenerate", metavar="EXPORT_ID",
+                     help="korábbi export újrakészítése ugyanazokkal a paraméterekkel")
+    exp.set_defaults(func=cmd_export)
     return p
 
 

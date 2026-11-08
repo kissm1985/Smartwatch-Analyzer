@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from pathlib import Path
 
 import streamlit as st
 
+from vitalmart.export.service import ANALYSIS_FORMATS, export_analysis
 from vitalmart.i18n import t
 from vitalmart.semantic import store
 from vitalmart.semantic.charts import build_figure
@@ -286,4 +288,24 @@ with right:
                            spec.model_dump_json(indent=2, exclude_defaults=True),
                            file_name=f"{(name or 'elemzes').replace(' ', '_')}.json",
                            mime="application/json", key="ex_dl")
+
+    with st.expander(t("export.ui.analysis_title")):
+        loaded_name = next((a.name for a in store.list_analyses(con)
+                            if a.analysis_id == ss.get("ex_loaded")), "")
+        x_title = st.text_input(t("export.ui.analysis_name"), value=loaded_name or
+                                topic.label_hu, key="ex_x_title")
+        x_note = st.text_area(t("export.ui.analysis_note"), key="ex_x_note")
+        cols_x = st.columns(len(ANALYSIS_FORMATS))
+        for col_x, fmt in zip(cols_x, ANALYSIS_FORMATS, strict=True):
+            if col_x.button(t(f"export.ui.analysis_{fmt}"), key=f"ex_x_{fmt}"):
+                with st.spinner(t("export.ui.creating")):
+                    out = export_analysis(con, cfg, spec, fmt, title=x_title or topic.label_hu,
+                                          note=x_note, model=model)
+                ss["ex_x_path"] = str(out.path)
+        x_path = ss.get("ex_x_path")
+        if x_path and Path(x_path).exists():
+            st.success(t("report.ui.saved_to", path=x_path))
+            st.download_button(t("export.ui.download") + f" – {Path(x_path).name}",
+                               Path(x_path).read_bytes(), file_name=Path(x_path).name,
+                               key="ex_x_dl")
 disclaimer()
