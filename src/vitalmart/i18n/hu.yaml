@@ -1,0 +1,37 @@
+app:
+  name: VitalMart
+  disclaimer: >-
+    Ez a jelentés fogyasztói okosóra adatain alapuló, tájékoztató jellegű elemzés.
+    Nem orvosi diagnózis, nem helyettesíti az orvosi vizsgálatot vagy tanácsot.
+    Az eszközök mérési pontossága korlátozott. Ha panaszai vannak, vagy az értékek
+    aggasztják, forduljon orvoshoz; sürgős tünet esetén hívja a 112-t.
+db:
+  initialized: "Adatbázis kész: {path} (sémaverzió: {version})"
+  wiped: "Minden adat törölve: {path}"
+  wipe_confirm: "A teljes adatbázis törléséhez add meg a --yes kapcsolót."
+  backup_done: "Biztonsági mentés elkészült: {path}"
+import:
+  detecting: "Forrás felismerése: {path}"
+  detected: "Felismert forrás: {adapter}"
+  unknown_source: "A megadott útvonalon nem található támogatott export (Apple Health export.zip / export.xml)."
+  not_found: "A fájl vagy mappa nem létezik: {path}"
+  duplicate_file: "Ezt a fájlt (SHA-256 egyezés) már betöltötted ({batch}. import). Kihagyva – újratöltéshez használd a --force kapcsolót."
+  failed: "Az import sikertelen, az adatbázis változatlan maradt. Ok: {reason}"
+  bad_zip: "A ZIP-fájl sérült vagy nem olvasható."
+  bad_xml: "Az XML-fájl sérült vagy csonka (pl. megszakadt letöltés)."
+  missing_export_xml: "A ZIP nem tartalmaz apple_health_export/export.xml fájlt."
+  summary: >-
+    Import kész (#{batch}): beolvasva {read}, új {new}, frissített {updated},
+    kihagyott (duplikált) {skipped}, hibás {errors}. Időtartomány: {date_from} – {date_to}
+  preview_header: "Előnézet – {adapter}"
+  preview_files: "Felismert fájlok:"
+  preview_types: "Rekordtípusok (darabszám):"
+  preview_range: "Dátumtartomány: {date_from} – {date_to}"
+  progress: "Betöltés: {pct}%"
+rebuild:
+  done: "Core réteg újraépítve ({seconds} mp)."
+report:
+  not_implemented: "A riportmotor az M6 mérföldkőben készül el."
+status:
+  header: "Adatbázis: {path} (sémaverzió: {version})"
+  table_rows: "{table}: {rows} sor"

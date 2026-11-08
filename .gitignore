@@ -1,0 +1,18 @@
+# Egészségügyi adat SOHA nem kerülhet verziókezelésbe
+data/
+*.duckdb
+*.duckdb.wal
+exports/
+uploads/
+export.zip
+export.xml
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/

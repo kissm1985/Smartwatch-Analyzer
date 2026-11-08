@@ -1,0 +1,85 @@
+# Apple HealthKit típusazonosítók → VitalMart metrika-kódok.
+# target:
+#   measurement        – fact_measurement (általános EAV tár) [alapértelmezés]
+#   heart_rate_sample  – fact_heart_rate_sample (nem duplikáljuk az EAV-ba)
+#   sleep              – fact_sleep_stage_interval / fact_sleep_session
+# scale: szorzó a mértékegység-átváltás után (pl. Apple a % értékeket 0–1 törtként adja).
+# A listában nem szereplő típusok automatikusan "apple_<snake_case>" metrikaként
+# kerülnek a fact_measurement táblába (SPEC 4.1).
+records:
+  HKQuantityTypeIdentifierHeartRate:                 {metric: heart_rate, target: heart_rate_sample}
+  HKQuantityTypeIdentifierRestingHeartRate:          {metric: resting_hr}
+  HKQuantityTypeIdentifierWalkingHeartRateAverage:   {metric: walking_hr_avg}
+  HKQuantityTypeIdentifierHeartRateVariabilitySDNN:  {metric: hrv_sdnn}
+  HKQuantityTypeIdentifierHeartRateRecoveryOneMinute: {metric: hr_recovery_1min}
+  HKQuantityTypeIdentifierStepCount:                 {metric: steps}
+  HKQuantityTypeIdentifierDistanceWalkingRunning:    {metric: distance_walk_run}
+  HKQuantityTypeIdentifierActiveEnergyBurned:        {metric: active_energy}
+  HKQuantityTypeIdentifierBasalEnergyBurned:         {metric: basal_energy}
+  HKQuantityTypeIdentifierAppleExerciseTime:         {metric: exercise_time}
+  HKQuantityTypeIdentifierAppleStandTime:            {metric: stand_time}
+  HKQuantityTypeIdentifierFlightsClimbed:            {metric: flights_climbed}
+  HKQuantityTypeIdentifierVO2Max:                    {metric: vo2max}
+  HKQuantityTypeIdentifierOxygenSaturation:          {metric: spo2, scale_if_fraction: 100}
+  HKQuantityTypeIdentifierRespiratoryRate:           {metric: respiratory_rate}
+  HKQuantityTypeIdentifierBodyMass:                  {metric: body_mass}
+  HKQuantityTypeIdentifierBodyFatPercentage:         {metric: body_fat_pct, scale_if_fraction: 100}
+  HKQuantityTypeIdentifierLeanBodyMass:              {metric: lean_body_mass}
+  HKQuantityTypeIdentifierBodyMassIndex:             {metric: bmi}
+  HKQuantityTypeIdentifierHeight:                    {metric: height}
+  HKCategoryTypeIdentifierSleepAnalysis:             {metric: sleep_duration, target: sleep}
+
+# Alvási kategóriaértékek → dim_sleep_stage.stage_key
+sleep_values:
+  HKCategoryValueSleepAnalysisInBed: in_bed
+  HKCategoryValueSleepAnalysisAsleep: unspecified          # iOS 16 előtti érték
+  HKCategoryValueSleepAnalysisAsleepUnspecified: unspecified
+  HKCategoryValueSleepAnalysisAsleepCore: light            # Apple "Core" ≈ Garmin "Light"
+  HKCategoryValueSleepAnalysisAsleepDeep: deep
+  HKCategoryValueSleepAnalysisAsleepREM: rem
+  HKCategoryValueSleepAnalysisAwake: awake
+
+# Mértékegység-átváltás a metrika-katalógus egységére: forrásegység → (célegység, szorzó)
+units:
+  - {from: count/min, to: bpm, factor: 1}
+  - {from: mi, to: km, factor: 1.609344}
+  - {from: m, to: km, factor: 0.001}
+  - {from: yd, to: km, factor: 0.0009144}
+  - {from: kJ, to: kcal, factor: 0.2390057361}
+  - {from: Cal, to: kcal, factor: 1}
+  - {from: lb, to: kg, factor: 0.45359237}
+  - {from: g, to: kg, factor: 0.001}
+  - {from: cm, to: m, factor: 0.01}
+  - {from: ft, to: m, factor: 0.3048}
+  - {from: in, to: m, factor: 0.0254}
+  - {from: hr, to: min, factor: 60}
+  - {from: s, to: min, factor: 0.0166666666667}
+  - {from: count/min, to: breaths/min, factor: 1}
+  - {from: mL/min·kg, to: mL/(kg·min), factor: 1}
+  - {from: ml/(kg*min), to: mL/(kg·min), factor: 1}
+  - {from: mL/(kg*min), to: mL/(kg·min), factor: 1}
+  - {from: count, to: kg/m², factor: 1}
+
+# Apple edzéstípusok → egységesített típus (dim_activity_type)
+# unified: running | walking | cycling | swimming | strength | hiit | hiking | yoga | other
+# category: aerobic | anaerobic | mobility
+workout_types:
+  HKWorkoutActivityTypeRunning:                     {unified: running, category: aerobic}
+  HKWorkoutActivityTypeWalking:                     {unified: walking, category: aerobic}
+  HKWorkoutActivityTypeCycling:                     {unified: cycling, category: aerobic}
+  HKWorkoutActivityTypeSwimming:                    {unified: swimming, category: aerobic}
+  HKWorkoutActivityTypeTraditionalStrengthTraining: {unified: strength, category: anaerobic}
+  HKWorkoutActivityTypeFunctionalStrengthTraining:  {unified: strength, category: anaerobic}
+  HKWorkoutActivityTypeCoreTraining:                {unified: strength, category: anaerobic}
+  HKWorkoutActivityTypeHighIntensityIntervalTraining: {unified: hiit, category: anaerobic}
+  HKWorkoutActivityTypeHiking:                      {unified: hiking, category: aerobic}
+  HKWorkoutActivityTypeYoga:                        {unified: yoga, category: mobility}
+  HKWorkoutActivityTypePilates:                     {unified: yoga, category: mobility}
+  HKWorkoutActivityTypeFlexibility:                 {unified: yoga, category: mobility}
+  HKWorkoutActivityTypeMindAndBody:                 {unified: yoga, category: mobility}
+  HKWorkoutActivityTypeElliptical:                  {unified: other, category: aerobic}
+  HKWorkoutActivityTypeRowing:                      {unified: other, category: aerobic}
+  HKWorkoutActivityTypeStairClimbing:               {unified: other, category: aerobic}
+  HKWorkoutActivityTypeCrossTraining:               {unified: hiit, category: anaerobic}
+  HKWorkoutActivityTypeMixedCardio:                 {unified: other, category: aerobic}
+  HKWorkoutActivityTypeCooldown:                    {unified: other, category: mobility}

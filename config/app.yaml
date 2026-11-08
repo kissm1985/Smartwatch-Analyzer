@@ -1,0 +1,24 @@
+# VitalMart alkalmazás-konfiguráció
+# Az adatmappa relatív útvonala a projekt gyökeréhez képest értendő.
+# Felülírható a VITALMART_DATA_DIR környezeti változóval.
+data_dir: data
+db_file: vitalmart.duckdb
+timezone: Europe/Budapest
+language: hu
+
+sleep:
+  # Alvásnap-konvenció: "wake" = az ébredés napja (alapértelmezett, SPEC 4.4),
+  # "start" = az elalvás (lefekvés) napja.
+  day_convention: wake
+  goal_hours: 7.5
+  # Két alvási intervallum ugyanahhoz az alvási szakaszhoz tartozik,
+  # ha a köztük lévő szünet ennél rövidebb (perc).
+  session_gap_minutes: 90
+
+import:
+  chunk_size: 50000
+
+database:
+  # DuckDB memóriakorlát; e fölött az adatmappa tmp/ alkönyvtárába lapoz (SPEC 4.2: < 4 GB RAM).
+  memory_limit: 2GB
+  threads: null      # null = összes mag

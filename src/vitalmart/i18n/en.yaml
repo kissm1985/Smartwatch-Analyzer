@@ -1,0 +1,37 @@
+app:
+  name: VitalMart
+  disclaimer: >-
+    This report is an informational analysis based on consumer smartwatch data.
+    It is not a medical diagnosis and does not replace medical examination or advice.
+    Device accuracy is limited. If you have symptoms or the values concern you,
+    see a doctor; in an emergency call 112.
+db:
+  initialized: "Database ready: {path} (schema version: {version})"
+  wiped: "All data deleted: {path}"
+  wipe_confirm: "Pass --yes to delete the whole database."
+  backup_done: "Backup created: {path}"
+import:
+  detecting: "Detecting source: {path}"
+  detected: "Detected source: {adapter}"
+  unknown_source: "No supported export found at the given path (Apple Health export.zip / export.xml)."
+  not_found: "File or folder does not exist: {path}"
+  duplicate_file: "This file (same SHA-256) was already imported (batch {batch}). Skipped – use --force to reload."
+  failed: "Import failed, the database was left unchanged. Reason: {reason}"
+  bad_zip: "The ZIP file is corrupt or unreadable."
+  bad_xml: "The XML file is corrupt or truncated (e.g. interrupted download)."
+  missing_export_xml: "The ZIP does not contain apple_health_export/export.xml."
+  summary: >-
+    Import done (#{batch}): read {read}, new {new}, updated {updated},
+    skipped (duplicate) {skipped}, errors {errors}. Range: {date_from} – {date_to}
+  preview_header: "Preview – {adapter}"
+  preview_files: "Detected files:"
+  preview_types: "Record types (count):"
+  preview_range: "Date range: {date_from} – {date_to}"
+  progress: "Loading: {pct}%"
+rebuild:
+  done: "Core layer rebuilt ({seconds} s)."
+report:
+  not_implemented: "The report engine arrives in milestone M6."
+status:
+  header: "Database: {path} (schema version: {version})"
+  table_rows: "{table}: {rows} rows"
