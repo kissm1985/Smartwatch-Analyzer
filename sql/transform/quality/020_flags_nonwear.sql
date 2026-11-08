@@ -27,13 +27,21 @@ FROM g LEFT JOIN dim_source s USING (source_key)
 WHERE quality_flag <> 'ok';
 
 DELETE FROM dq_nonwear;
--- long pauses between heart-rate samples
+-- long pauses between heart-rate samples – only for sources with continuous
+-- (all-day) monitoring, i.e. a median of >= 24 non-workout samples per day;
+-- workout-only recordings (FIT activity files) would otherwise look "not worn"
 INSERT INTO dq_nonwear
-WITH h AS (
+WITH cont AS (
+    SELECT source_key FROM (
+        SELECT source_key, date_key, count(*) AS n FROM fact_heart_rate_sample
+        WHERE context <> 'activity' GROUP BY 1, 2)
+    GROUP BY source_key HAVING median(n) >= 24
+), h AS (
     SELECT source_key, ts_utc, ts_local, tz_offset_min,
            lag(ts_utc) OVER (PARTITION BY source_key ORDER BY ts_utc) AS prev_utc,
            lag(ts_local) OVER (PARTITION BY source_key ORDER BY ts_utc) AS prev_local
     FROM fact_heart_rate_sample
+    WHERE context <> 'activity' AND source_key IN (SELECT source_key FROM cont)
 )
 SELECT coalesce(s.person_key, 'unassigned'), h.source_key, 'hr_gap', prev_utc, ts_utc,
        prev_local, ts_local, date_diff('second', prev_utc, ts_utc) / 60.0, 0

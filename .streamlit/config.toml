@@ -1,0 +1,16 @@
+# VitalMart – helyi futtatás (SPEC 10.1): csak localhost, nincs telemetria.
+[server]
+address = "127.0.0.1"
+headless = true
+maxUploadSize = 4096        # MB – nagy Apple exportokhoz
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+serverAddress = "127.0.0.1"
+
+[client]
+toolbarMode = "minimal"
+
+[theme]
+# nincs rögzített téma: világos/sötét a rendszer szerint, a menüben váltható

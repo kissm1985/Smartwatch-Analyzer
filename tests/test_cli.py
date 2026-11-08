@@ -27,3 +27,21 @@ def test_cli_import_error_message(tmp_path: Path, capsys):
     rc = main(["--data-dir", str(tmp_path / "data"), "import", str(tmp_path / "missing.zip")])
     assert rc == 1
     assert "nem létezik" in capsys.readouterr().err
+
+
+def test_cli_reports_locked_database(tmp_path: Path, capsys):
+    import subprocess
+    import sys
+
+    d = tmp_path / "data"
+    assert main(["--data-dir", str(d), "init"]) == 0
+    holder = subprocess.Popen(
+        [sys.executable, "-c",
+         "import duckdb, sys, time; c = duckdb.connect(sys.argv[1]); print('ok', flush=True); "
+         "time.sleep(30)", str(d / "vitalmart.duckdb")], stdout=subprocess.PIPE, text=True)
+    try:
+        assert holder.stdout.readline().strip() == "ok"
+        assert main(["--data-dir", str(d), "status"]) == 3
+        assert "másik folyamat" in capsys.readouterr().err
+    finally:
+        holder.kill()

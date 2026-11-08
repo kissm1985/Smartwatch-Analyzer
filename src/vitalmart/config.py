@@ -12,6 +12,7 @@ import yaml
 from pydantic import BaseModel, Field, field_validator
 
 from vitalmart.paths import CONFIG_DIR, PROJECT_ROOT
+from vitalmart.settings import deep_merge, load_settings
 
 
 class SleepConfig(BaseModel):
@@ -106,13 +107,25 @@ def load_yaml_file(path: Path) -> dict[str, Any]:
     return data
 
 
-def load_config(path: Path | None = None, **overrides: Any) -> AppConfig:
-    """Load app config. ``VITALMART_CONFIG`` / ``VITALMART_DATA_DIR`` env vars override."""
+def load_config(
+    path: Path | None = None, *, use_user_settings: bool = True, **overrides: Any,
+) -> AppConfig:
+    """Load app config: config/app.yaml < env vars < <data_dir>/settings.yaml < overrides.
+
+    ``VITALMART_CONFIG`` / ``VITALMART_DATA_DIR`` env vars select the files.
+    """
     path = path or Path(os.environ.get("VITALMART_CONFIG", CONFIG_DIR / "app.yaml"))
     data: dict[str, Any] = load_yaml_file(path) if path.exists() else {}
     if env_dir := os.environ.get("VITALMART_DATA_DIR"):
         data["data_dir"] = env_dir
-    data.update(overrides)
+    if "data_dir" in overrides:
+        data["data_dir"] = overrides["data_dir"]
+    # user overlay from <data_dir>/settings.yaml (git-ignored), then explicit overrides
+    if use_user_settings:
+        probe = AppConfig.model_validate({"data_dir": data.get("data_dir", "data")})
+        data = deep_merge(data, load_settings(probe.data_path))
+    data = deep_merge(data, overrides)
+    data.pop("rules_parameters", None)
     return AppConfig.model_validate(data)
 
 

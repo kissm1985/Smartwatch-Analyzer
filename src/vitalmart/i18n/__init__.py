@@ -42,3 +42,7 @@ def t(key: str, lang: str | None = None, **kwargs: Any) -> str:
     lang = lang or _current
     text = _catalog(lang).get(key) or _catalog(DEFAULT_LANG).get(key) or key
     return text.format(**kwargs) if kwargs else text
+
+
+def has(key: str, lang: str | None = None) -> bool:
+    return key in _catalog(lang or _current) or key in _catalog(DEFAULT_LANG)

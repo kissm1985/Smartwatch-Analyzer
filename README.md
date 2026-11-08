@@ -18,8 +18,9 @@ külön kezelhetők (személy = elemzési dimenzió, nem felhasználói fiók). 
 | M1 – Apple Health import, staging + core, dim_date/metric/source/activity_type | ✅ kész |
 | M2 – Garmin JSON + FIT import, mezőleképezés YAML-ból, ismeretlen mezők megőrzése | ✅ kész |
 | M3 – származtatott mutatók, adatminőség (pandas/scipy referenciával ellenőrizve) | ✅ kész |
-| M4 – Streamlit felület (Import, Áttekintés, Adatminőség, Beállítások) | ⏳ következik |
-| M5–M9 | ⏳ |
+| M4 – Streamlit felület (Import, Áttekintés, Adatminőség, Beállítások) | ✅ kész |
+| M5 – szemantikus réteg + Explorer | ⏳ következik |
+| M6–M9 | ⏳ |
 
 ## Telepítés
 
@@ -31,6 +32,31 @@ uv run ruff check        # lint
 ```
 
 Python 3.12+ szükséges. Telepítés után hálózat nélkül is működik.
+
+## Grafikus felület
+
+```bash
+uv run vitalmart ui            # vagy: uv run streamlit run app/main.py
+```
+
+Megnyitás: <http://127.0.0.1:8501>. A felület **csak a helyi gépen** érhető el
+(`.streamlit/config.toml`: `address = "127.0.0.1"`, telemetria kikapcsolva; ha mégis más
+címre kötnéd, az alkalmazás nem indul el). Világos/sötét téma a rendszer szerint, a jobb felső
+menüben váltható.
+
+| Oldal | Tartalom |
+|---|---|
+| Áttekintés | személyenként 7/30/90 nap kulcsmutatói (nyugalmi pulzus, HRV a módszerrel, alvásidő, WHO-percek, lépés, stressz) a megelőző 60 nap átlagához mért eltéréssel, mini-trenddel; utolsó adat dátuma, források |
+| Import | feltöltés vagy helyi útvonal, személy, automatikus/kézi forrásfelismerés, **előnézet** (fájlok, rekordtípusok, dátumtartomány, figyelmeztetések) → megerősítés → haladásjelző → **összefoglaló**; importnapló |
+| Adatminőség | lefedettség (havi hőtérkép), hézagok, megjelölt értékek, nem viselés, forrásváltások |
+| Beállítások | időzóna, nyelv, alvásnap-konvenció, alvási cél, alapvonal; személyek neve és profilja (érvényességi időszakokkal, pulzuszónák); elsődleges forrás metrikánként; riportküszöbök; mentés, újraszámolás, **teljes törlés** (megerősítéssel) |
+| Riport / Elemző / Export | az M5–M7 mérföldkövekben |
+
+A Beállításokban tett módosítások a `data/settings.yaml`-ba kerülnek (gitignore-olt), a
+`config/*.yaml` alapértékeit nem írják felül. A feltöltött fájl a betöltés után törlődik.
+
+> Amíg a felület fut, a parancssori `vitalmart import` nem éri el az adatbázist (DuckDB-zár) –
+> importálj a felületről, vagy előbb zárd be.
 
 ## Első lépések
 
@@ -65,7 +91,8 @@ További parancsok:
 | `vitalmart rebuild` | a core réteg teljes újraépítése a stagingből (pl. időzóna-váltás után) |
 | `vitalmart status` | táblák sorszáma |
 | `vitalmart backup` | adatbázis-másolat a `data/backups/` mappába |
-| `vitalmart wipe --yes` | **minden** adat törlése (adatbázis, exportok, mentések) |
+| `vitalmart wipe --yes` | **minden** adat törlése (adatbázis, exportok, mentések, beállítások) |
+| `vitalmart ui [--port 8501]` | grafikus felület (csak 127.0.0.1) |
 | `vitalmart report` | M6-ban készül el |
 
 Globális kapcsolók: `--data-dir`, `--config`, `-v` (technikai napló).
@@ -202,7 +229,7 @@ elsődleges forrás váltása (legalább `quality.switch_min_days` napig tartó 
 A DuckDB memóriakorlátja `config/app.yaml` → `database.memory_limit` (alapérték 2 GB);
 e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd lejjebb.
 
-## Ismert korlátok (M1–M3)
+## Ismert korlátok (M1–M4)
 
 - A core réteg minden importnál **teljesen** újraépül (gyors, de nem inkrementális – SPEC 10.3 SHOULD, M9).
 - Az Apple napi összesítő (`fact_daily_summary`) forrásonként külön sor (óra és iPhone
@@ -224,6 +251,9 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - Garmin: a Connect-export alvásadata csak fázis-összegeket tartalmaz (hipnogram-intervallum
   nincs); a napon belüli pulzus/stressz csak az óráról másolt FIT Monitor-fájlokból jön.
 - Garmin: a testsúly a Connect-beállításból (`USER_SETTING`) is származhat, nem csak mérlegből.
+- A Streamlit számbeviteli mezői tizedespontot mutatnak (a böngésző-komponens korlátja);
+  minden kijelzett szám, dátum és idő magyar formátumú (tizedesvessző, ÉÉÉÉ.HH.NN., 24 órás).
+- Egyszerre egy folyamat írhatja az adatbázist (felület VAGY parancssor).
 - Csak FIT Monitor-fájlokból (Connect-export nélkül) még nem képződik napi összesítő, így
   származtatott napi mutató sem; a pulzus- és stresszminták és az adatminőségi jelek megvannak.
 - Az ACWR terhelési módszere személyen belül változhat (pl. Garmin TRIMP vs. Apple időtartam);

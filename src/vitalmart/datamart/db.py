@@ -16,13 +16,22 @@ from vitalmart.paths import MIGRATIONS_DIR
 
 log = logging.getLogger(__name__)
 
+class DatabaseLocked(RuntimeError):
+    """Another process (typically the running Streamlit UI) holds the DuckDB file lock."""
+
+
 _MIGRATION_RE = re.compile(r"^(\d{3})_([a-z0-9_]+)\.sql$")
 
 
 def connect(cfg: AppConfig, *, read_only: bool = False) -> duckdb.DuckDBPyConnection:
     """Open the database (creating the data dir) and apply pending migrations."""
     cfg.data_path.mkdir(parents=True, exist_ok=True)
-    con = duckdb.connect(str(cfg.db_path), read_only=read_only)
+    try:
+        con = duckdb.connect(str(cfg.db_path), read_only=read_only)
+    except duckdb.IOException as exc:
+        if "lock" in str(exc).lower():
+            raise DatabaseLocked(str(cfg.db_path)) from exc
+        raise
     # Always UTC inside the engine: TIMESTAMPTZ -> TIMESTAMP casts must not
     # depend on the machine's zone. Local time comes from tz_offset.
     con.execute("SET TimeZone = 'UTC'")
@@ -102,7 +111,7 @@ def backup(cfg: AppConfig, con: duckdb.DuckDBPyConnection | None = None) -> Path
 
 
 def wipe(cfg: AppConfig) -> list[Path]:
-    """Delete ALL health data: database (+WAL), exports, uploads and backups.
+    """Delete ALL health data: database (+WAL), exports, uploads, backups, user settings.
 
     The caller must close open connections first. Returns the removed paths.
     """
@@ -111,6 +120,10 @@ def wipe(cfg: AppConfig) -> list[Path]:
         if p.exists():
             p.unlink()
             removed.append(p)
+    settings_file = cfg.data_path / "settings.yaml"   # may contain names / device ids
+    if settings_file.exists():
+        settings_file.unlink()
+        removed.append(settings_file)
     for d in (cfg.exports_path, cfg.backups_path, cfg.data_path / "uploads",
               cfg.data_path / "tmp"):
         if d.exists():

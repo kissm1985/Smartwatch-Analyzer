@@ -1,0 +1,22 @@
+# Riportszabályok (SPEC 7.3) – az M6 riportmotor tölti fel a szabályokkal.
+# A küszöbök ORVOSI FELÜLVIZSGÁLATRA SZORULÓ tartalmak; a termék tulajdonosa tölti ki:
+reviewed_by: null
+reviewed_at: null
+version: 0
+
+# Paraméterek (a Beállítások oldalon felülírhatók; a felülírás a data/settings.yaml-ba kerül)
+parameters:
+  min_valid_days:            {value: 14,  unit: nap,   label_hu: "Minimális érvényes napok egy szekcióhoz"}
+  sleep_min_hours:           {value: 7.0, unit: óra,   label_hu: "Ajánlott minimális alvásidő (AASM/SRS)"}
+  sleep_short_share_pct:     {value: 50,  unit: "%",   label_hu: "Rövid alvású napok aránya, ami figyelmet érdemel"}
+  rhr_z_threshold:           {value: 1.5, unit: z,     label_hu: "Nyugalmi pulzus eltérése az alapvonaltól (z)"}
+  rhr_consecutive_days:      {value: 7,   unit: nap,   label_hu: "Tartós eltérés napjainak száma"}
+  rhr_high_bpm:              {value: 100, unit: bpm,   label_hu: "Tartósan magas nyugalmi pulzus"}
+  rhr_low_bpm:               {value: 40,  unit: bpm,   label_hu: "Tartósan alacsony nyugalmi pulzus"}
+  who_moderate_min_week:     {value: 150, unit: perc,  label_hu: "WHO: heti mérsékelt-egyenértékes percek alsó határa"}
+  who_moderate_target_week:  {value: 300, unit: perc,  label_hu: "WHO: heti mérsékelt-egyenértékes percek felső irányértéke"}
+  strength_days_week:        {value: 2,   unit: nap,   label_hu: "WHO: heti erősítő napok"}
+  acwr_high:                 {value: 1.5, unit: arány, label_hu: "Akut:krónikus terhelés-arány figyelmeztetési küszöbe (közelítés)"}
+  hrv_deviation_days:        {value: 5,   unit: nap,   label_hu: "HRV tartós eltérése az alapvonal sávjától"}
+
+rules: []

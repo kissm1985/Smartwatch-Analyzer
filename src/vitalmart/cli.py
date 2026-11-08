@@ -150,6 +150,19 @@ def cmd_quality(cfg: AppConfig, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ui(cfg: AppConfig, args: argparse.Namespace) -> int:
+    """Start the Streamlit UI bound to 127.0.0.1 only (SPEC 10.1)."""
+    import subprocess
+
+    from vitalmart.paths import PROJECT_ROOT
+
+    cmd = [sys.executable, "-m", "streamlit", "run", str(PROJECT_ROOT / "app" / "main.py"),
+           "--server.address", "127.0.0.1", "--server.port", str(args.port),
+           "--browser.gatherUsageStats", "false"]
+    env = dict(__import__("os").environ, VITALMART_DATA_DIR=str(cfg.data_path))
+    return subprocess.call(cmd, cwd=PROJECT_ROOT, env=env)
+
+
 def cmd_report(cfg: AppConfig, args: argparse.Namespace) -> int:
     print(t("report.not_implemented"))
     return 2
@@ -198,6 +211,10 @@ def build_parser() -> argparse.ArgumentParser:
     qa.add_argument("--person", help="csak ennek a személynek")
     qa.set_defaults(func=cmd_quality)
 
+    ui = sub.add_parser("ui", help="grafikus felület indítása (csak 127.0.0.1)")
+    ui.add_argument("--port", type=int, default=8501)
+    ui.set_defaults(func=cmd_ui)
+
     rep = sub.add_parser("report", help="egészségügyi riport (M6)")
     rep.add_argument("--from", dest="date_from")
     rep.add_argument("--to", dest="date_to")
@@ -212,11 +229,14 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.DEBUG if args.verbose else logging.WARNING,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    overrides = {"data_dir": str(args.data_dir)} if args.data_dir else {}
-    cfg = load_config(args.config, **overrides)
+    cfg = (load_config(args.config, data_dir=str(args.data_dir)) if args.data_dir
+           else load_config(args.config))
     set_language(cfg.language)
     try:
         return int(args.func(cfg, args))
+    except db.DatabaseLocked:
+        print(t("db.locked", path=cfg.db_path), file=sys.stderr)
+        return 3
     except ImportFailure as exc:
         msg = t(exc.i18n_key, **exc.kwargs)
         if exc.i18n_key != "import.failed":
