@@ -14,39 +14,7 @@ ZONE_PCT = [50, 60, 70, 80, 90]          # default zone lower bounds, % of max H
 
 
 # ---------------------------------------------------------------- formatting (SPEC 10.5)
-
-def fmt_num(x: float | int | None, digits: int = 0) -> str:
-    """Hungarian number format: decimal comma, thin-space thousands separator."""
-    if x is None or (isinstance(x, float) and x != x):
-        return "–"
-    s = f"{x:,.{digits}f}"
-    return s.replace(",", " ").replace(".", ",")
-
-
-def _missing(v: object) -> bool:
-    try:
-        return v is None or bool(pd.isna(v))
-    except (TypeError, ValueError):
-        return False
-
-
-def fmt_date(d: date | pd.Timestamp | None) -> str:
-    if _missing(d):
-        return "–"
-    return pd.Timestamp(d).strftime("%Y.%m.%d.")
-
-
-def fmt_datetime(v: object) -> str:
-    if _missing(v):
-        return "–"
-    return pd.Timestamp(v).strftime("%Y.%m.%d. %H:%M")
-
-
-def fmt_hm(minutes: float | None) -> str:
-    if minutes is None or minutes != minutes:
-        return "–"
-    m = round(minutes)
-    return f"{m // 60} ó {m % 60:02d} p"
+from vitalmart.fmt import fmt_date, fmt_datetime, fmt_hm, fmt_num  # noqa: E402,F401 - re-export
 
 
 def labeled(df: pd.DataFrame) -> pd.DataFrame:

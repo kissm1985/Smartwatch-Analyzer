@@ -1,22 +1,230 @@
-# Riportszabályok (SPEC 7.3) – az M6 riportmotor tölti fel a szabályokkal.
-# A küszöbök ORVOSI FELÜLVIZSGÁLATRA SZORULÓ tartalmak; a termék tulajdonosa tölti ki:
+# Riportszabályok (SPEC 7.3). A riport determinisztikus és szabályalapú – nincs LLM / külső API.
+#
+# A küszöbök és a szövegek ORVOSI FELÜLVIZSGÁLATRA SZORULÓ tartalmak.
+# A termék tulajdonosa 2026-11-08-án úgy döntött, hogy szakmai felülvizsgálatot nem kér
+# (review_status: not_requested); a riport Módszertan szekciója ezt jelzi.
 reviewed_by: null
 reviewed_at: null
-version: 0
+review_status: not_requested
+version: 1
+
+# Forrásmegjelölések (a szabályok "source" mezője hivatkozik rájuk)
+references:
+  who2020: "WHO 2020: Irányelvek a fizikai aktivitásról és az ülő életmódról (felnőttek: heti 150–300 perc mérsékelt vagy 75–150 perc intenzív aktivitás, heti ≥ 2 nap izomerősítés)."
+  aasm2015: "AASM/SRS konszenzus (Watson és mtsai., 2015): felnőtteknek rendszeresen legalább 7 óra alvás ajánlott."
+  sleep_regularity: "Alvásszabályossági szakirodalom (pl. Phillips és mtsai., 2017; Wittmann és mtsai., 2006 – „social jet lag”)."
+  aha_rhr: "AHA/ESC irányadó értékek: a nyugalmi pulzus szokásos tartománya felnőtteknél kb. 60–100/perc; edzett személyeknél alacsonyabb is lehet."
+  acwr: "Akut:krónikus terhelési arány (Gabbett, 2016) – vitatott, csak tájékoztató jellegű közelítés."
+  garmin_stress: "Garmin stresszpontszám (0–100; 0–25 pihenő, 26–50 alacsony, 51–75 közepes, 76–100 magas) – gyártói, HRV-alapú algoritmus."
+  spo2_wearable: "Csuklón mért SpO₂: a fogyasztói eszközök pontossága korlátozott, orvosi célra nem alkalmas."
+  personal_baseline: "Személyes alapvonal: a megelőző 60 nap átlaga és szórása (VitalMart módszertan)."
 
 # Paraméterek (a Beállítások oldalon felülírhatók; a felülírás a data/settings.yaml-ba kerül)
 parameters:
   min_valid_days:            {value: 14,  unit: nap,   label_hu: "Minimális érvényes napok egy szekcióhoz"}
   sleep_min_hours:           {value: 7.0, unit: óra,   label_hu: "Ajánlott minimális alvásidő (AASM/SRS)"}
   sleep_short_share_pct:     {value: 50,  unit: "%",   label_hu: "Rövid alvású napok aránya, ami figyelmet érdemel"}
+  sleep_good_share_pct:      {value: 80,  unit: "%",   label_hu: "Megfelelő alvású napok aránya (pozitív megállapítás)"}
+  sleep_regularity_std_min:  {value: 60,  unit: perc,  label_hu: "Lefekvési idő szórása, ami fölött szabálytalan"}
+  social_jetlag_min:         {value: 60,  unit: perc,  label_hu: "Hétköznap–hétvége alvásközép-eltolódás küszöbe"}
   rhr_z_threshold:           {value: 1.5, unit: z,     label_hu: "Nyugalmi pulzus eltérése az alapvonaltól (z)"}
   rhr_consecutive_days:      {value: 7,   unit: nap,   label_hu: "Tartós eltérés napjainak száma"}
   rhr_high_bpm:              {value: 100, unit: bpm,   label_hu: "Tartósan magas nyugalmi pulzus"}
   rhr_low_bpm:               {value: 40,  unit: bpm,   label_hu: "Tartósan alacsony nyugalmi pulzus"}
+  rhr_change_bpm:            {value: 2,   unit: bpm,   label_hu: "Nyugalmi pulzus változása az előző időszakhoz"}
+  hrv_z_threshold:           {value: 1.5, unit: z,     label_hu: "HRV eltérése az alapvonaltól (z, lefelé)"}
+  hrv_deviation_days:        {value: 5,   unit: nap,   label_hu: "HRV tartós eltérése az alapvonal sávjától"}
   who_moderate_min_week:     {value: 150, unit: perc,  label_hu: "WHO: heti mérsékelt-egyenértékes percek alsó határa"}
   who_moderate_target_week:  {value: 300, unit: perc,  label_hu: "WHO: heti mérsékelt-egyenértékes percek felső irányértéke"}
   strength_days_week:        {value: 2,   unit: nap,   label_hu: "WHO: heti erősítő napok"}
   acwr_high:                 {value: 1.5, unit: arány, label_hu: "Akut:krónikus terhelés-arány figyelmeztetési küszöbe (közelítés)"}
-  hrv_deviation_days:        {value: 5,   unit: nap,   label_hu: "HRV tartós eltérése az alapvonal sávjától"}
+  acwr_high_days:            {value: 3,   unit: nap,   label_hu: "Ennyi napon át a küszöb fölött"}
+  stress_high_mean:          {value: 50,  unit: pont,  label_hu: "Átlagos napi stressz (Garmin), ami fölött figyelmet érdemel"}
+  spo2_low_pct:              {value: 88,  unit: "%",   label_hu: "Alvás alatti legalacsonyabb SpO₂, ami alacsony értéknek számít"}
+  spo2_low_nights:           {value: 3,   unit: éjszaka, label_hu: "Ennyi ilyen éjszaka esetén említi a riport"}
+  weight_change_kg:          {value: 2.0, unit: kg,    label_hu: "Testsúly-változás az időszak alatt"}
+  steps_change_pct:          {value: 15,  unit: "%",   label_hu: "Lépésszám változása az előző időszakhoz"}
+  outlier_robust_z:          {value: 3.5, unit: z,     label_hu: "Kiugró nap (robusztus z)"}
+  correlation_min_n:         {value: 20,  unit: nap,   label_hu: "Összefüggés-vizsgálat minimális mintaszáma"}
 
-rules: []
+# Szabálytípusok (a motor kódjában, paraméterek és szövegek itt):
+#   share_below / share_at_least  – a napok hány %-ában van a metrika a küszöb alatt / fölött
+#   mean_above / mean_below       – időszakos átlag a küszöbhöz képest
+#   consecutive_z_above/_below    – leghosszabb egymást követő napsor, ahol z >= / <= küszöb
+#   weekly_mean_below/_at_least   – heti átlag (pl. WHO-percek)
+#   days_above                    – hány (érvényes) napon van a küszöb fölött
+#   count_below                   – hány éjszakán/napon van a küszöb alatt
+#   change_abs / change_pct       – változás az összehasonlító (előző) időszakhoz
+#   regularity_above, jetlag_above – alvásszabályosság
+# severity: info | attention | consult   (info = tájékoztató vagy pozitív)
+# A szövegekben a {} mezők a motor által számolt értékek (magyar formázással).
+rules:
+  - id: sleep_short_share
+    section: sleep
+    metric: sleep_min
+    type: share_below
+    threshold: {param: sleep_min_hours, scale: 60}
+    share: {param: sleep_short_share_pct}
+    severity: attention
+    source: aasm2015
+    text: "Az éjszakák {share} %-ában az alvásidő {threshold_h} óra alatt volt (irányadó: felnőtteknek rendszeresen legalább {threshold_h} óra)."
+    focus: "Alvásidő: az éjszakák jelentős részében {threshold_h} óránál kevesebb alvás."
+  - id: sleep_goal_good
+    section: sleep
+    metric: sleep_min
+    type: share_at_least
+    threshold: {param: sleep_min_hours, scale: 60}
+    share: {param: sleep_good_share_pct}
+    severity: info
+    positive: true
+    source: aasm2015
+    text: "Az éjszakák {share} %-ában legalább {threshold_h} óra volt az alvásidő."
+  - id: sleep_irregular
+    section: sleep
+    type: regularity_above
+    threshold: {param: sleep_regularity_std_min}
+    severity: attention
+    source: sleep_regularity
+    text: "A lefekvés időpontjának átlagos 7 napos szórása {value} perc (küszöb: {threshold} perc) – az alvás időzítése változékony."
+    focus: "Alvás időzítése: a lefekvés ideje napról napra jelentősen változik."
+  - id: social_jetlag
+    section: sleep
+    type: jetlag_above
+    threshold: {param: social_jetlag_min}
+    severity: attention
+    source: sleep_regularity
+    text: "Az alvás közepe hétvégén átlagosan {value} perccel tolódik el a hétköznapokhoz képest („social jet lag”)."
+    focus: "Hétköznap–hétvége ritmus: az alvás közepe hétvégén átlagosan {value} perccel eltolódik."
+  - id: rhr_sustained_high
+    section: heart
+    metric: resting_hr
+    type: consecutive_z_above
+    threshold: {param: rhr_z_threshold}
+    days: {param: rhr_consecutive_days}
+    severity: attention
+    source: personal_baseline
+    text: "A nyugalmi pulzus {days} egymást követő napon (legutóbb {last_date}) legalább {threshold} szórással a személyes alapvonal felett volt. Ennek lehet oka terhelés, betegség vagy alváshiány – az adat önmagában nem ad magyarázatot."
+    focus: "Nyugalmi pulzus: {days} napos, alapvonal feletti időszak ({last_date})."
+  - id: rhr_high_abs
+    section: heart
+    metric: resting_hr
+    type: mean_above
+    threshold: {param: rhr_high_bpm}
+    severity: consult
+    source: aha_rhr
+    text: "A nyugalmi pulzus időszakos átlaga {value} bpm, ami a szokásos felnőtt tartomány ({threshold} bpm) felett van. Ha panaszai vannak, érdemes orvossal megbeszélni."
+  - id: rhr_low_abs
+    section: heart
+    metric: resting_hr
+    type: mean_below
+    threshold: {param: rhr_low_bpm}
+    severity: info
+    source: aha_rhr
+    text: "A nyugalmi pulzus időszakos átlaga {value} bpm. Edzett személyeknél ez gyakori; ha szédülés, ájulásérzés vagy más panasz kíséri, érdemes orvossal megbeszélni."
+  - id: rhr_improved
+    section: heart
+    metric: resting_hr
+    type: change_abs
+    threshold: {param: rhr_change_bpm, sign: -1}
+    severity: info
+    positive: true
+    source: personal_baseline
+    text: "A nyugalmi pulzus átlaga {delta} bpm-mel alacsonyabb, mint az előző azonos hosszú időszakban."
+  - id: rhr_increased
+    section: heart
+    metric: resting_hr
+    type: change_abs
+    threshold: {param: rhr_change_bpm, sign: 1}
+    severity: info
+    source: personal_baseline
+    text: "A nyugalmi pulzus átlaga {delta} bpm-mel magasabb, mint az előző azonos hosszú időszakban."
+  - id: hrv_sustained_low
+    section: heart
+    metric: "hrv_*"
+    type: consecutive_z_below
+    threshold: {param: hrv_z_threshold}
+    days: {param: hrv_deviation_days}
+    severity: attention
+    source: personal_baseline
+    text: "Az éjszakai HRV ({method}) {days} egymást követő éjszakán (legutóbb {last_date}) a személyes alapvonal sávja alatt volt. Ez gyakran terheléssel, rövid alvással vagy betegséggel jár együtt – az adat önmagában nem ad magyarázatot."
+    focus: "HRV: {days} éjszakás, alapvonal alatti időszak ({last_date})."
+  - id: who_below
+    section: activity
+    type: weekly_mean_below
+    metric: who_equiv_min
+    threshold: {param: who_moderate_min_week}
+    severity: attention
+    source: who2020
+    text: "A heti mérsékelt-egyenértékes aktív percek átlaga {value} perc, ami az irányadó heti {threshold} perc alatt van."
+    focus: "Aktivitás: a heti aktív percek átlaga ({value} perc) az irányadó {threshold} perc alatt."
+  - id: who_met
+    section: activity
+    type: weekly_mean_at_least
+    metric: who_equiv_min
+    threshold: {param: who_moderate_min_week}
+    severity: info
+    positive: true
+    source: who2020
+    text: "A heti mérsékelt-egyenértékes aktív percek átlaga {value} perc – eléri az irányadó heti {threshold} percet."
+  - id: strength_below
+    section: activity
+    type: weekly_mean_below
+    metric: strength_days
+    threshold: {param: strength_days_week}
+    severity: attention
+    source: who2020
+    text: "Az erősítő edzéssel töltött napok heti átlaga {value} nap; az irányadó érték heti {threshold} nap."
+    focus: "Izomerősítés: heti átlag {value} nap (irányadó: {threshold})."
+  - id: acwr_high
+    section: activity
+    type: days_above
+    metric: acwr
+    threshold: {param: acwr_high}
+    days: {param: acwr_high_days}
+    severity: attention
+    source: acwr
+    text: "Az akut:krónikus terhelési arány {days} napon {threshold} fölött volt (legutóbb {last_date}). Ez a hirtelen terhelésnövekedés jele lehet – a mutató módszertani közelítés."
+    focus: "Terhelés: hirtelen növekedés ({last_date} körül) – érdemes fokozatosan emelni."
+  - id: steps_change
+    section: activity
+    metric: steps
+    type: change_pct
+    threshold: {param: steps_change_pct}
+    severity: info
+    source: personal_baseline
+    text: "A napi lépésszám átlaga {delta_pct} %-kal változott az előző azonos hosszú időszakhoz képest."
+  - id: stress_high
+    section: stress
+    metric: stress_avg
+    type: mean_above
+    threshold: {param: stress_high_mean}
+    severity: attention
+    source: garmin_stress
+    text: "A napi átlagos stresszpontszám {value} (a gyártói skálán {threshold} fölött „közepes” tartomány)."
+    focus: "Stressz: magas átlagos napi stresszpontszám ({value})."
+  - id: spo2_low_nights
+    section: respiration
+    metric: spo2_sleep_min
+    type: count_below
+    threshold: {param: spo2_low_pct}
+    days: {param: spo2_low_nights}
+    severity: info
+    source: spo2_wearable
+    text: "{days} éjszakán volt az alvás alatti legalacsonyabb mért SpO₂ {threshold} % alatt. A csuklón mért érték pontossága korlátozott; ha panaszai (pl. nappali fáradtság, hangos horkolás) vannak, érdemes orvossal megbeszélni."
+  - id: weight_change
+    section: body
+    metric: body_mass
+    type: span_change_abs
+    threshold: {param: weight_change_kg}
+    severity: info
+    source: personal_baseline
+    text: "A testsúly az időszak alatt {delta} kg-mal változott (első és utolsó mérés)."
+
+# Előre definiált összefüggések (Spearman), lag = a második mérőszám ennyi nappal később
+correlations:
+  - {id: sleep_rhr,     x: sleep_min,     y: resting_hr,       lag: 0, label_hu: "Alvásidő → ébredés napi nyugalmi pulzus"}
+  - {id: sleep_hrv,     x: sleep_min,     y: "hrv_*",          lag: 0, label_hu: "Alvásidő → éjszakai HRV"}
+  - {id: load_sleep,    x: training_load, y: sleep_min,        lag: 1, label_hu: "Napi edzésterhelés → következő éjszaka alvásideje"}
+  - {id: load_hrv,      x: training_load, y: "hrv_*",          lag: 1, label_hu: "Napi edzésterhelés → következő éjszaka HRV"}
+  - {id: stress_sleep,  x: stress_avg,    y: sleep_efficiency, lag: 1, label_hu: "Napi stressz → következő éjszaka alváshatékonysága"}
+  - {id: steps_sleep,   x: steps,         y: sleep_min,        lag: 1, label_hu: "Lépésszám → következő éjszaka alvásideje"}

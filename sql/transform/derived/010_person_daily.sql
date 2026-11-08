@@ -33,7 +33,7 @@ FROM (
         SELECT source_key, sleep_date,
                asleep_min AS sleep_min, in_bed_min AS sleep_in_bed_min,
                efficiency_pct AS sleep_efficiency, sleep_score,
-               deep_min AS sleep_deep_min, rem_min AS sleep_rem_min,
+               deep_min AS sleep_deep_min, light_min AS sleep_light_min, rem_min AS sleep_rem_min,
                awake_min AS sleep_awake_min,
                date_diff('second',
                          CAST(CAST(start_local - INTERVAL 12 HOUR AS DATE) AS TIMESTAMP)

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t("report.title") }} – {{ rep.person_name }} – {{ period_text }}</title>
+<meta name="generator" content="VitalMart {{ app_version }}">
+<style>
+  :root { --ink:#111827; --muted:#6b7280; --line:#e5e7eb; --bg:#ffffff; --soft:#f8fafc;
+          --info:#2563eb; --attention:#d97706; --consult:#dc2626; --positive:#16a34a; }
+  * { box-sizing: border-box; }
+  body { font-family: "DejaVu Sans", "Noto Sans", Arial, sans-serif; color: var(--ink);
+         background: var(--bg); margin: 0; line-height: 1.5; font-size: 14px; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 30px; margin: 0 0 4px; }
+  h2 { font-size: 22px; margin: 40px 0 12px; padding-top: 12px; border-top: 2px solid var(--line); }
+  h3 { font-size: 15px; margin: 18px 0 6px; color: var(--muted); font-weight: 600; }
+  .muted { color: var(--muted); }
+  .cover { padding: 24px; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 18px; margin: 8px 0; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; font-variant-numeric: tabular-nums; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .finding { border-left: 4px solid var(--info); background: var(--soft); padding: 8px 12px;
+             margin: 8px 0; border-radius: 0 6px 6px 0; }
+  .finding.attention { border-color: var(--attention); } .finding.consult { border-color: var(--consult); }
+  .finding.positive { border-color: var(--positive); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+           letter-spacing: .03em; margin-right: 6px; }
+  .finding .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .na { padding: 10px 12px; background: var(--soft); border: 1px dashed var(--line); border-radius: 6px; }
+  .chart { margin: 12px 0 18px; page-break-inside: avoid; }
+  .chart h4 { margin: 0 0 2px; font-size: 13px; }
+  nav.toc ol { columns: 2; padding-left: 20px; }
+  .disclaimer { border: 2px solid var(--consult); padding: 12px 14px; border-radius: 8px; }
+  footer { color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); margin-top: 40px; padding-top: 8px; }
+  @media print { main { padding: 0; } h2 { page-break-after: avoid; } .chart, .finding { page-break-inside: avoid; } }
+</style>
+{% if plotly_js %}<script type="text/javascript">{{ plotly_js | safe }}</script>{% endif %}
+</head>
+<body>
+<main>
+
+{# ---------------------------------------------------------------- 1. cover + summary #}
+<section class="cover" id="osszegzes">
+  <h1>{{ t("report.title") }}</h1>
+  <div class="muted">{{ rep.person_name }} · {{ period_text }}</div>
+  <dl class="kv">
+    <dt>{{ t("report.cover.compare") }}</dt><dd>{{ rep.cmp.start | date }} – {{ rep.cmp.end | date }}</dd>
+    <dt>{{ t("report.cover.sources") }}</dt>
+    <dd>{% for s in rep.sources %}{{ s.name }} ({{ s.vendor }}, {{ s.type }}){% if not loop.last %}; {% endif %}{% else %}–{% endfor %}</dd>
+    <dt>{{ t("report.cover.coverage") }}</dt><dd>{{ rep.coverage_pct | num }} %</dd>
+  </dl>
+</section>
+
+<nav class="toc">
+  <h3>{{ t("report.toc") }}</h3>
+  <ol>
+    <li><a href="#osszegzes">{{ t("report.section.summary") }}</a></li>
+    {% for s in rep.sections %}<li><a href="#{{ s.key }}">{{ s.title }}</a></li>{% endfor %}
+    <li><a href="#fokusz">{{ t("report.section.focus") }}</a></li>
+    <li><a href="#modszertan">{{ t("report.section.methodology") }}</a></li>
+    <li><a href="#nyilatkozat">{{ t("report.section.disclaimer") }}</a></li>
+  </ol>
+</nav>
+
+<h2>{{ t("report.section.summary") }}</h2>
+{% if rep.summary %}
+  {% for f in rep.summary %}
+  <div class="finding {{ 'positive' if f.positive else f.severity }}">
+    <span class="badge">{{ finding_label(f) }}</span>{{ f.text }}
+    <div class="meta">{{ t("report.meta", basis=f.basis, confidence=f.confidence, n=f.n) }}{% if f.chart_id %} · <a href="#chart-{{ f.chart_id }}">{{ t("report.see_chart") }}</a>{% endif %}</div>
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="na">{{ t("report.no_findings") }}</p>
+{% endif %}
+{% if rep.changes %}
+<h3>{{ t("report.changes") }}</h3>
+<table><thead><tr><th>{{ t("report.t.metric") }}</th><th>{{ t("report.t.current") }}</th><th>{{ t("report.t.previous") }}</th><th>{{ t("report.t.change") }}</th></tr></thead>
+<tbody>{% for r in rep.changes %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+{% endif %}
+
+{# ---------------------------------------------------------------- 2–9. sections #}
+{% for s in rep.sections %}
+<h2 id="{{ s.key }}">{{ s.title }}</h2>
+{% if not s.available %}
+  <p class="na">{{ s.reason }}</p>
+{% else %}
+  {% if s.facts %}<dl class="kv">{% for k, v in s.facts %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}</dl>{% endif %}
+  {% for f in s.findings %}
+  <div class="finding {{ 'positive' if f.positive else f.severity }}">
+    <span class="badge">{{ finding_label(f) }}</span>{{ f.text }}
+    <div class="meta">{{ t("report.meta", basis=f.basis, confidence=f.confidence, n=f.n) }}{% if f.source %} · {{ t("report.source") }}: {{ f.source }}{% endif %}</div>
+  </div>
+  {% endfor %}
+  {% for p in s.paragraphs %}<p class="muted">{{ p }}</p>{% endfor %}
+  {% if s.table %}
+  <table><thead><tr>{% for h in s.table_head %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for r in s.table %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+  {% endif %}
+  {% for c in s.charts %}
+  <div class="chart"><h4>{{ c.title }}</h4>{{ charts[c.chart_id] | safe }}</div>
+  {% endfor %}
+{% endif %}
+{% endfor %}
+
+{# ---------------------------------------------------------------- 10. focus #}
+<h2 id="fokusz">{{ t("report.section.focus") }}</h2>
+{% if rep.focus %}
+<ul>{% for x in rep.focus %}<li>{{ x }}</li>{% endfor %}</ul>
+<p class="muted">{{ t("report.p.focus_note") }}</p>
+{% else %}<p class="na">{{ t("report.no_focus") }}</p>{% endif %}
+
+{# ---------------------------------------------------------------- 11. methodology #}
+<h2 id="modszertan">{{ t("report.section.methodology") }}</h2>
+{% for p in rep.methodology %}<p>{{ p }}</p>{% endfor %}
+<p><strong>{{ rep.review_note }}</strong></p>
+<h3>{{ t("report.thresholds") }}</h3>
+<table><thead><tr><th>{{ t("report.t.parameter") }}</th><th>{{ t("report.t.value") }}</th></tr></thead>
+<tbody>{% for r in rep.thresholds %}<tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td></tr>{% endfor %}</tbody></table>
+
+{# ---------------------------------------------------------------- 12. disclaimer #}
+<h2 id="nyilatkozat">{{ t("report.section.disclaimer") }}</h2>
+<p class="disclaimer">{{ rep.disclaimer }}</p>
+
+<footer>
+  {{ t("report.footer", generated=rep.generated_at | datetime, period=period_text, app=app_version,
+       rules=rep.rules_version, data=rep.data_version) }}
+</footer>
+</main>
+</body>
+</html>

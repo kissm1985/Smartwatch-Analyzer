@@ -164,8 +164,28 @@ def cmd_ui(cfg: AppConfig, args: argparse.Namespace) -> int:
 
 
 def cmd_report(cfg: AppConfig, args: argparse.Namespace) -> int:
-    print(t("report.not_implemented"))
-    return 2
+    from datetime import date
+
+    from vitalmart.report.engine import default_period, generate
+
+    con = db.connect(cfg)
+    person = args.person or cfg.default_person
+    if args.date_from and args.date_to:
+        start, end = date.fromisoformat(args.date_from), date.fromisoformat(args.date_to)
+    else:
+        rng = default_period(con, person, args.days)
+        if rng is None:
+            print(t("report.ui.no_data"), file=sys.stderr)
+            return 1
+        start, end = rng
+        if args.date_to:
+            end = date.fromisoformat(args.date_to)
+            start = end - (rng[1] - rng[0])
+    out = Path(args.out).expanduser() if args.out else None
+    _rep, _html, path = generate(con, cfg, person, start, end, out=out)
+    con.close()
+    print(t("report.ui.saved_to", path=path))
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -215,10 +235,13 @@ def build_parser() -> argparse.ArgumentParser:
     ui.add_argument("--port", type=int, default=8501)
     ui.set_defaults(func=cmd_ui)
 
-    rep = sub.add_parser("report", help="egészségügyi riport (M6)")
-    rep.add_argument("--from", dest="date_from")
-    rep.add_argument("--to", dest="date_to")
-    rep.add_argument("--out")
+    rep = sub.add_parser("report", help="egészségügyi riport (HTML)")
+    rep.add_argument("--person", help="személykód (alapértelmezés: default_person)")
+    rep.add_argument("--from", dest="date_from", help="ÉÉÉÉ-HH-NN")
+    rep.add_argument("--to", dest="date_to", help="ÉÉÉÉ-HH-NN")
+    rep.add_argument("--days", type=int, default=90,
+                     help="időszak hossza napban, ha nincs --from (alapértelmezés: 90)")
+    rep.add_argument("--out", help="kimeneti HTML-fájl")
     rep.set_defaults(func=cmd_report)
     return p
 

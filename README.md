@@ -20,8 +20,9 @@ külön kezelhetők (személy = elemzési dimenzió, nem felhasználói fiók). 
 | M3 – származtatott mutatók, adatminőség (pandas/scipy referenciával ellenőrizve) | ✅ kész |
 | M4 – Streamlit felület (Import, Áttekintés, Adatminőség, Beállítások) | ✅ kész |
 | M5 – szemantikus réteg + Elemző (Explorer) | ✅ kész |
-| M6 – riportmotor (HTML) | ⏳ következik |
-| M7–M9 | ⏳ |
+| M6 – riportmotor (szabálykatalógus, szekciók, ábrák) HTML-ben | ✅ kész |
+| M7 – PDF és XLSX/CSV/Parquet export, export-előzmények | ⏳ következik |
+| M8–M9 | ⏳ |
 
 ## Telepítés
 
@@ -52,7 +53,8 @@ menüben váltható.
 | Adatminőség | lefedettség (havi hőtérkép), hézagok, megjelölt értékek, nem viselés, forrásváltások |
 | Beállítások | időzóna, nyelv, alvásnap-konvenció, alvási cél, alapvonal; személyek neve és profilja (érvényességi időszakokkal, pulzuszónák); elsődleges forrás metrikánként; riportküszöbök; mentés, újraszámolás, **teljes törlés** (megerősítéssel) |
 | Elemző | lásd lent |
-| Riport / Export | az M6–M7 mérföldkövekben |
+| Egészségügyi riport | személy + időszak (30/90/180/365 nap vagy egyéni) → szabályalapú HTML-riport, letöltés, korábbi riportok újragenerálása |
+| Export | az M7 mérföldkőben |
 
 A Beállításokban tett módosítások a `data/settings.yaml`-ba kerülnek (gitignore-olt), a
 `config/*.yaml` alapértékeit nem írják felül. A feltöltött fájl a betöltés után törlődik.
@@ -87,6 +89,34 @@ csoportosított lekérdezése < 1 s, 1 év percenkénti pulzus óra × hét napj
 elemzés mentése névvel, leírással, címkékkel, felülírás, törlés; definíció letöltése/betöltése JSON-ként.
 Ha egy elemzés nem bontja személyek szerint, a kiválasztott személyre szűkítve fut (különben két ember
 napi adatai összekeverednének).
+
+## Egészségügyi riport (M6)
+
+Determinisztikus, **szabályalapú** riport (nincs LLM, nincs külső hívás). A küszöbök, a szövegek és a
+forráshivatkozások kizárólag a `config/rules.yaml`-ban vannak; a paraméterek a Beállításokban
+felülírhatók. A tulajdonos döntése alapján a küszöbök **szakmai felülvizsgálata nem történt meg**
+(`review_status: not_requested`) – ezt a riport Módszertan szekciója is jelzi.
+
+Felépítés (SPEC 7.2): címoldal és vezetői összegzés (legfontosabb megállapítások, változás az előző
+azonos hosszú időszakhoz) · alvás · szív és HRV (módszerenként) · stressz és regeneráció (csak
+Garmin; Apple-nél indoklással kimarad) · aktivitás és edzés (WHO 150/300 perc, heti 2 erősítő nap,
+zónák, ACWR-közelítés) · légzés és SpO₂ (csak leíró) · testösszetétel · összefüggések (Spearman, n,
+p, erősség, „a korreláció nem ok-okozat”) · anomáliák · fókuszterületek (max. 5) · módszertan és
+korlátok (küszöbtáblával) · nyilatkozat.
+
+Minden megállapításnál: mért érték, összehasonlítási alap (küszöb / személyes alapvonal / előző
+időszak), **bizonyossági szint** (magas: ≥ 80 % lefedettség és ≥ 28 érték; közepes: ≥ 50 % és a minimum;
+egyébként alacsony) és a hivatkozott ábra. 14 érvényes napnál kevesebbnél a szekció „nincs elegendő
+adat” jelzést ad, nem következtet.
+
+Szabálytípusok: arány küszöb alatt/fölött, átlag küszöb fölött/alatt, leghosszabb egymást követő
+z-eltérés, heti átlag, napok küszöb fölött, darab küszöb alatt, változás az előző időszakhoz
+(abs./%), változás az időszakon belül, alvásszabályosság, „social jet lag”.
+
+**Reprodukálhatóság**: minden riport pillanatképként (`report_snapshot`) mentődik: paraméterek,
+adatverzió (tartalom-hash), szabálykatalógus-verzió, időbélyeg. Újragenerálásnál változatlan
+adat és szabályok mellett a HTML **bájtra azonos**; a lábléc tartalmazza a verziókat. A Plotly a
+fájlba ágyazva, CDN nélkül (kb. 5 MB / riport). PDF: M7.
 
 ## Első lépések
 
@@ -123,7 +153,7 @@ További parancsok:
 | `vitalmart backup` | adatbázis-másolat a `data/backups/` mappába |
 | `vitalmart wipe --yes` | **minden** adat törlése (adatbázis, exportok, mentések, beállítások) |
 | `vitalmart ui [--port 8501]` | grafikus felület (csak 127.0.0.1) |
-| `vitalmart report` | M6-ban készül el |
+| `vitalmart report [--person KOD] [--days 90 \| --from ÉÉÉÉ-HH-NN --to ÉÉÉÉ-HH-NN] [--out f.html]` | egészségügyi riport (HTML) |
 
 Globális kapcsolók: `--data-dir`, `--config`, `-v` (technikai napló).
 
@@ -259,7 +289,7 @@ elsődleges forrás váltása (legalább `quality.switch_min_days` napig tartó 
 A DuckDB memóriakorlátja `config/app.yaml` → `database.memory_limit` (alapérték 2 GB);
 e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd lejjebb.
 
-## Ismert korlátok (M1–M5)
+## Ismert korlátok (M1–M6)
 
 - A core réteg minden importnál **teljesen** újraépül (gyors, de nem inkrementális – SPEC 10.3 SHOULD, M9).
 - Az Apple napi összesítő (`fact_daily_summary`) forrásonként külön sor (óra és iPhone
@@ -283,6 +313,9 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - Garmin: a testsúly a Connect-beállításból (`USER_SETTING`) is származhat, nem csak mérlegből.
 - A Streamlit számbeviteli mezői tizedespontot mutatnak (a böngésző-komponens korlátja);
   minden kijelzett szám, dátum és idő magyar formátumú (tizedesvessző, ÉÉÉÉ.HH.NN., 24 órás).
+- A riport egyelőre csak magyar nyelvű és HTML (a PDF az M7-ben); a riport-szövegek egy része
+  (nem orvosi leíró mondatok) az i18n-fájlokban, az orvosi tartalmú szövegek a `rules.yaml`-ban vannak.
+- A korrelációk p-értéke nincs többszörös összehasonlításra korrigálva (a riport jelzi).
 - Az Elemző mozgóátlaga a megjelenített időszakok (pl. hetek) számán dolgozik, nem naptári napokon;
   a naptári ablakos mutatók a „Személyes alapvonal és z-pont” témában vannak.
 - Események/annotációk, lag-korreláció, két időszak összehasonlítása, saját nézetek (műszerfal),

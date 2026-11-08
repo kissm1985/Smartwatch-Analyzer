@@ -17,7 +17,7 @@ def test_cli_end_to_end(tmp_path: Path, sample_zip: Path, capsys):
     assert main([*d, "status"]) == 0
     assert "fact_sleep_session" in capsys.readouterr().out
     assert main([*d, "backup"]) == 0
-    assert main([*d, "report"]) == 2
+    assert main([*d, "report"]) == 0
     assert main([*d, "wipe"]) == 2
     assert main([*d, "wipe", "--yes"]) == 0
     assert not (tmp_path / "data" / "vitalmart.duckdb").exists()

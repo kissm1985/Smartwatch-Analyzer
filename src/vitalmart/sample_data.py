@@ -5,7 +5,7 @@ NEVER use real personal data as test fixtures. This module produces an
 built-in, known patterns so parsers, metrics and report rules are testable:
 
 * poor-sleep period   (``POOR_SLEEP``): ~5.5 h sleep, later bedtime
-* illness period      (``ILLNESS``):    resting HR +8 bpm, HRV −35 %, no workouts
+* illness period      (``ILLNESS``, 8 days): resting HR +8 bpm, HRV −45 %, no workouts
 * training block      (``TRAINING``):   5–6 workouts / week instead of ~3
 * DST transitions inside the default range (2024-03-31 spring forward)
 * data-quality traps: one impossible HR value (250 bpm), an exact duplicate
@@ -35,7 +35,7 @@ PHONE_DEVICE = ("<<HKDevice: 0x0>, name:iPhone, manufacturer:Apple Inc., model:i
 
 # day-offset ranges (inclusive start, exclusive end) relative to the start date
 POOR_SLEEP = (20, 34)
-ILLNESS = (45, 51)
+ILLNESS = (45, 53)
 TRAINING = (60, 81)
 
 
@@ -190,7 +190,7 @@ def generate_export_xml(spec: SampleSpec = DEFAULT_SPEC) -> str:
                      value=f"HKCategoryValueSleepAnalysis{stage}", device=WATCH_DEVICE)
 
         # nightly HRV (SDNN), respiratory rate, SpO2
-        hrv_base = 48.0 * (0.65 if ill else 1.0) * (0.85 if poor else 1.0)
+        hrv_base = 48.0 * (0.55 if ill else 1.0) * (0.85 if poor else 1.0)
         for k in range(4):
             ts = bed + timedelta(minutes=45 + k * 80)
             if ts < wake:
