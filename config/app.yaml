@@ -17,6 +17,9 @@ sleep:
   # Két alvási intervallum ugyanahhoz az alvási szakaszhoz tartozik,
   # ha a köztük lévő szünet ennél rövidebb (perc).
   session_gap_minutes: 90
+  # Ennél hosszabb egyetlen alvási intervallum (pl. egy app 20 órás „ágyban” rekordja)
+  # valószínűtlen: megjelölve megmarad, de a szakaszképzésből kimarad.
+  max_interval_hours: 16
 
 import:
   chunk_size: 50000

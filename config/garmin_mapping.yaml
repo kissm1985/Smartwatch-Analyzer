@@ -189,7 +189,12 @@ activity_types:
   elliptical:          {unified: other, category: aerobic}
   stair_climbing:      {unified: other, category: aerobic}
   indoor_rowing:       {unified: other, category: aerobic}
-  indoor_cardio:       {unified: other, category: aerobic}
+  indoor_cardio:       {unified: racket, category: aerobic}   # a tulajdonosnál: squash
+  squash:              {unified: racket, category: aerobic}
+  tennis:              {unified: racket, category: aerobic}
+  padel:               {unified: racket, category: aerobic}
+  badminton:           {unified: racket, category: aerobic}
+  table_tennis:        {unified: racket, category: aerobic}
   fitness_equipment:   {unified: other, category: aerobic}
   training:            {unified: other, category: aerobic}
 

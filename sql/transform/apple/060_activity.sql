@@ -80,6 +80,21 @@ FROM (
 ) x
 WHERE a.activity_id = x.activity_id;
 
+-- workouts without HR statistics (e.g. phone-recorded or newer export formats):
+-- derive avg/max/min from Apple heart-rate samples inside the workout window
+UPDATE fact_activity a SET hr_avg = x.hr_avg, hr_max = x.hr_max, hr_min = x.hr_min
+FROM (
+    SELECT a2.activity_id, avg(h.bpm) AS hr_avg, max(h.bpm) AS hr_max, min(h.bpm) AS hr_min
+    FROM fact_activity a2
+    JOIN fact_heart_rate_sample h
+      ON h.source_key LIKE 'apple:%' AND h.quality_flag = 'ok'
+     AND h.ts_utc >= a2.start_utc AND h.ts_utc <= a2.end_utc
+    WHERE a2.source_key LIKE 'apple:%' AND a2.hr_avg IS NULL
+    GROUP BY a2.activity_id
+    HAVING count(*) >= 3
+) x
+WHERE a.activity_id = x.activity_id;
+
 -- workout windows override other HR contexts
 UPDATE fact_heart_rate_sample h SET context = 'activity'
 FROM fact_activity a

@@ -89,6 +89,8 @@ def load_mappings(con: duckdb.DuckDBPyConnection, cfg: AppConfig) -> None:
 def _set_variables(con: duckdb.DuckDBPyConnection, cfg: AppConfig) -> None:
     con.execute("SET VARIABLE sleep_gap_min = ?", [cfg.sleep.session_gap_minutes])
     con.execute("SET VARIABLE sleep_day_convention = ?", [cfg.sleep.day_convention])
+    con.execute("SET VARIABLE sleep_max_interval_min = ?",
+                [float(cfg.sleep.max_interval_hours) * 60])
 
 
 def transform_files(directory: Path = TRANSFORM_DIR) -> list[Path]:

@@ -11,6 +11,7 @@ records:
   HKQuantityTypeIdentifierRestingHeartRate:          {metric: resting_hr}
   HKQuantityTypeIdentifierWalkingHeartRateAverage:   {metric: walking_hr_avg}
   HKQuantityTypeIdentifierHeartRateVariabilitySDNN:  {metric: hrv_sdnn}
+  HKQuantityTypeIdentifierHeartRateVariabilityRMSSD: {metric: hrv_rmssd}    # újabb iOS/watchOS
   HKQuantityTypeIdentifierHeartRateRecoveryOneMinute: {metric: hr_recovery_1min}
   HKQuantityTypeIdentifierStepCount:                 {metric: steps}
   HKQuantityTypeIdentifierDistanceWalkingRunning:    {metric: distance_walk_run}
@@ -28,6 +29,13 @@ records:
   HKQuantityTypeIdentifierBodyMassIndex:             {metric: bmi}
   HKQuantityTypeIdentifierHeight:                    {metric: height}
   HKCategoryTypeIdentifierSleepAnalysis:             {metric: sleep_duration, target: sleep}
+  # különösen érzékeny (reproduktív egészség): csak tárolás, kategória 'reproductive'
+  HKCategoryTypeIdentifierMenstrualFlow:             {metric: menstrual_flow}
+  HKCategoryTypeIdentifierIntermenstrualBleeding:    {metric: intermenstrual_bleeding}
+  HKCategoryTypeIdentifierOvulationTestResult:       {metric: ovulation_test}
+  HKCategoryTypeIdentifierPregnancy:                 {metric: pregnancy}
+  HKCategoryTypeIdentifierLactation:                 {metric: lactation}
+  HKCategoryTypeIdentifierContraceptive:             {metric: contraceptive}
 
 # Alvási kategóriaértékek → dim_sleep_stage.stage_key
 sleep_values:
@@ -61,7 +69,7 @@ units:
   - {from: count, to: kg/m², factor: 1}
 
 # Apple edzéstípusok → egységesített típus (dim_activity_type)
-# unified: running | walking | cycling | swimming | strength | hiit | hiking | yoga | other
+# unified: running | walking | cycling | swimming | strength | hiit | hiking | yoga | racket | other
 # category: aerobic | anaerobic | mobility
 workout_types:
   HKWorkoutActivityTypeRunning:                     {unified: running, category: aerobic}
@@ -83,3 +91,9 @@ workout_types:
   HKWorkoutActivityTypeCrossTraining:               {unified: hiit, category: anaerobic}
   HKWorkoutActivityTypeMixedCardio:                 {unified: other, category: aerobic}
   HKWorkoutActivityTypeCooldown:                    {unified: other, category: mobility}
+  HKWorkoutActivityTypeSquash:                      {unified: racket, category: aerobic}
+  HKWorkoutActivityTypeTennis:                      {unified: racket, category: aerobic}
+  HKWorkoutActivityTypeBadminton:                   {unified: racket, category: aerobic}
+  HKWorkoutActivityTypeTableTennis:                 {unified: racket, category: aerobic}
+  HKWorkoutActivityTypeRacquetball:                 {unified: racket, category: aerobic}
+  HKWorkoutActivityTypePickleball:                  {unified: racket, category: aerobic}

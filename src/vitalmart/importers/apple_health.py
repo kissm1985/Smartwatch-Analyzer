@@ -12,6 +12,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+import unicodedata
 import zipfile
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -38,8 +39,31 @@ from vitalmart.importers.staging import sql_hash as _h
 
 log = logging.getLogger(__name__)
 
-MAIN_XML = "export.xml"
+MAIN_XML = "export.xml"          # English iOS; e.g. Hungarian iOS writes "exportálás.xml"
 IGNORED_FILES = {"export_cda.xml"}
+
+
+def _nfc(name: str) -> str:
+    # zip members from iOS/macOS carry decomposed (NFD) accents
+    return unicodedata.normalize("NFC", name).lower()
+
+
+def is_main_name(name: str) -> bool:
+    """Candidate for the main export XML: any .xml except the CDA document.
+
+    The file name is localised by iOS (export.xml, exportálás.xml, ...), so the
+    final decision is made by content (``<HealthData`` root) where possible.
+    """
+    n = _nfc(name)
+    return n.endswith(".xml") and not n.endswith("_cda.xml") and "cda" not in n
+
+
+SNIFF_BYTES = 64 * 1024
+
+
+def _sniff(head: bytes) -> bool:
+    # the root element follows a long internal DTD; the DOCTYPE comes first
+    return b"<!DOCTYPE HealthData" in head or b"<HealthData" in head
 TAGS = ("Record", "Workout", "ActivitySummary")
 TS_FMT = "%Y-%m-%d %H:%M:%S %z"
 
@@ -112,25 +136,38 @@ class AppleHealthAdapter(SourceAdapter):
             if path.suffix.lower() == ".zip":
                 with zipfile.ZipFile(path) as zf:
                     return cls._find_zip_xml(zf) is not None
-            if path.suffix.lower() == ".xml" and path.name not in IGNORED_FILES:
+            if path.suffix.lower() == ".xml" and is_main_name(path.name):
                 with path.open("rb") as fh:
-                    head = fh.read(4096)
-                return b"<HealthData" in head or b"HealthData" in head
+                    return _sniff(fh.read(SNIFF_BYTES))
         except (OSError, zipfile.BadZipFile):
             return False
         return False
 
     @staticmethod
     def _find_zip_xml(zf: zipfile.ZipFile) -> zipfile.ZipInfo | None:
-        cands = [i for i in zf.infolist() if PurePosixPath(i.filename).name == MAIN_XML]
-        cands.sort(key=lambda i: len(i.filename))
-        return cands[0] if cands else None
+        cands = [i for i in zf.infolist()
+                 if not i.is_dir() and is_main_name(PurePosixPath(i.filename).name)
+                 and "workout-routes" not in i.filename]
+        # prefer the canonical name, then the shallowest path
+        cands.sort(key=lambda i: (_nfc(PurePosixPath(i.filename).name) != MAIN_XML,
+                                  i.filename.count("/"), len(i.filename)))
+        for info in cands:
+            with zf.open(info) as fh:
+                if _sniff(fh.read(SNIFF_BYTES)):
+                    return info
+        return None
 
     @staticmethod
     def _find_dir_xml(path: Path) -> Path | None:
-        for cand in (path / MAIN_XML, path / "apple_health_export" / MAIN_XML):
-            if cand.is_file():
-                return cand
+        for folder in (path, path / "apple_health_export"):
+            if not folder.is_dir():
+                continue
+            cands = sorted((f for f in folder.glob("*.xml") if is_main_name(f.name)),
+                           key=lambda f: (_nfc(f.name) != MAIN_XML, f.name))
+            for cand in cands:
+                with cand.open("rb") as fh:
+                    if _sniff(fh.read(SNIFF_BYTES)):
+                        return cand
         return None
 
     def fingerprint(self, path: Path) -> str:
@@ -145,10 +182,10 @@ class AppleHealthAdapter(SourceAdapter):
     @staticmethod
     def _classify(rel: str) -> str:
         p = PurePosixPath(rel)
-        if p.name == MAIN_XML:
-            return "main"
-        if p.name in IGNORED_FILES:
+        if _nfc(p.name).endswith("_cda.xml") or p.name in IGNORED_FILES:
             return "ignored"
+        if is_main_name(p.name) and "workout-routes" not in p.parts:
+            return "main"
         if "workout-routes" in p.parts or p.suffix.lower() == ".gpx":
             return "route"
         if "electrocardiograms" in p.parts and p.suffix.lower() == ".csv":

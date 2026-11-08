@@ -7,7 +7,7 @@ metrics:
   resting_hr:        {name_hu: Nyugalmi pulzus, name_en: Resting heart rate, category: heart, unit: bpm, agg: AVG, better: lower, valid_min: 25, valid_max: 150}
   walking_hr_avg:    {name_hu: Séta közbeni átlagpulzus, name_en: Walking heart rate average, category: heart, unit: bpm, agg: AVG, better: lower, valid_min: 25, valid_max: 230}
   hrv_sdnn:          {name_hu: Szívfrekvencia-variabilitás (SDNN), name_en: Heart rate variability (SDNN), category: heart, unit: ms, agg: AVG, better: higher, valid_min: 1, valid_max: 400, note: "HRV módszer: SDNN (Apple Watch). RMSSD-vel nem hasonlítható össze."}
-  hrv_rmssd:         {name_hu: Szívfrekvencia-variabilitás (RMSSD), name_en: Heart rate variability (RMSSD), category: heart, unit: ms, agg: AVG, better: higher, valid_min: 1, valid_max: 400, note: "HRV módszer: RMSSD (Garmin). SDNN-nel nem hasonlítható össze."}
+  hrv_rmssd:         {name_hu: Szívfrekvencia-variabilitás (RMSSD), name_en: Heart rate variability (RMSSD), category: heart, unit: ms, agg: AVG, better: higher, valid_min: 1, valid_max: 400, note: "HRV módszer: RMSSD (újabb Apple Watch; Garmin). SDNN-nel nem hasonlítható össze."}
   hr_recovery_1min:  {name_hu: Pulzus-visszaesés (1 perc), name_en: Heart rate recovery (1 min), category: heart, unit: bpm, agg: AVG, better: higher, valid_min: 0, valid_max: 120}
   steps:             {name_hu: Lépésszám, name_en: Steps, category: activity, unit: count, agg: SUM, better: higher, valid_min: 0, valid_max: 100000}
   distance_walk_run: {name_hu: Gyaloglás/futás távolság, name_en: Walking + running distance, category: activity, unit: km, agg: SUM, better: higher, valid_min: 0, valid_max: 300}
@@ -57,3 +57,10 @@ metrics:
   spo2_sleep_min:         {name_hu: Legalacsonyabb SpO₂ alvás közben, name_en: Lowest SpO2 during sleep, category: respiration, unit: "%", agg: MIN, better: higher, valid_min: 50, valid_max: 100}
   sleep_awake_count:      {name_hu: Ébredések száma, name_en: Awakenings, category: sleep, unit: count, agg: SUM, better: lower, valid_min: 0, valid_max: 100}
   sleep_restless_moments: {name_hu: Nyugtalan pillanatok, name_en: Restless moments, category: sleep, unit: count, agg: SUM, better: lower, valid_min: 0, valid_max: 1000}
+  # Reproduktív egészség – különösen érzékeny adat; csak tárolás, értelmezés/riport nélkül
+  menstrual_flow:          {name_hu: Menstruáció, name_en: Menstrual flow, category: reproductive, unit: category, agg: LAST, better: neutral, note: "Érzékeny adat; a riport nem használja."}
+  intermenstrual_bleeding: {name_hu: Köztes vérzés, name_en: Intermenstrual bleeding, category: reproductive, unit: category, agg: LAST, better: neutral, note: "Érzékeny adat; a riport nem használja."}
+  ovulation_test:          {name_hu: Ovulációs teszt, name_en: Ovulation test, category: reproductive, unit: category, agg: LAST, better: neutral, note: "Érzékeny adat; a riport nem használja."}
+  pregnancy:               {name_hu: Terhesség, name_en: Pregnancy, category: reproductive, unit: category, agg: LAST, better: neutral, note: "Érzékeny adat; a riport nem használja."}
+  lactation:               {name_hu: Szoptatás, name_en: Lactation, category: reproductive, unit: category, agg: LAST, better: neutral, note: "Érzékeny adat; a riport nem használja."}
+  contraceptive:           {name_hu: Fogamzásgátlás, name_en: Contraceptive, category: reproductive, unit: category, agg: LAST, better: neutral, note: "Érzékeny adat; a riport nem használja."}

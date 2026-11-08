@@ -18,6 +18,8 @@ class SleepConfig(BaseModel):
     day_convention: Literal["wake", "start"] = "wake"
     goal_hours: float = Field(7.5, gt=0, le=24)
     session_gap_minutes: int = Field(90, ge=1, le=24 * 60)
+    # single sleep intervals longer than this are implausible (kept, flagged, not used)
+    max_interval_hours: float = Field(16, gt=0, le=48)
 
 
 class ImportConfig(BaseModel):

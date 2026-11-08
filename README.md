@@ -73,8 +73,12 @@ Globális kapcsolók: `--data-dir`, `--config`, `-v` (technikai napló).
 1. iPhone-on nyisd meg az **Egészség** appot.
 2. Jobb felül a profilképed → **Összes egészségügyi adat exportálása** → Exportálás.
 3. Az elkészült `export.zip`-et juttasd el a gépedre (AirDrop, kábel, Fájlok app).
-4. `uv run vitalmart import export.zip` – a ZIP-et nem kell kicsomagolni
-   (a kicsomagolt `apple_health_export/` mappa vagy maga az `export.xml` is megadható).
+4. `uv run vitalmart import --person partner export.zip` – a ZIP-et nem kell kicsomagolni
+   (a kicsomagolt `apple_health_export/` mappa vagy maga az XML is megadható).
+
+> Magyar nyelvű iPhone-on a ZIP `exportálás.zip`, a fő fájl `exportálás.xml` néven jön
+> (ékezetek felbontott, NFD formában). A felismerés a tartalom alapján történik, így a fájlnév
+> nyelve nem számít.
 
 Feldolgozott tartalom: `export.xml` (`Record`, `Workout`, `ActivitySummary`);
 az EKG CSV-k változatlanul tárolódnak (értelmezés nélkül); a GPX útvonalak nyilvántartásba
@@ -181,6 +185,13 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - Sérült (nem jól formált) `export.xml` esetén az import leáll és visszagörget
   (nincs „helyreállító" parse-olás, hogy csendben ne vesszen el adat).
 - Intervallum-mennyiségek (pl. lépés) a kezdő időpont helyi napjához számítanak.
+- Alvás-appok (Apple Health-be író külső alkalmazások) egymásba lógó szakaszokat írhatnak: a
+  rendszer a szakaszok **unióját** számolja (nem az összegüket), az ébren-szakasz elsőbbséget
+  kap az átfedő alvással szemben, a `sleep.max_interval_hours`-nál (16 h) hosszabb egyedi
+  intervallum megjelölve megmarad, de a szakaszképzésből kimarad.
+- Apple HRV: az `SDNN` mellett az újabb watchOS `RMSSD`-t is ad – külön `hrv_method` sorként.
+- Reproduktív egészségi rekordok (pl. menstruáció) `reproductive` kategóriával, csak tárolásra
+  kerülnek be; a riport nem használja őket.
 - Garmin: a Connect-export alvásadata csak fázis-összegeket tartalmaz (hipnogram-intervallum
   nincs); a napon belüli pulzus/stressz csak az óráról másolt FIT Monitor-fájlokból jön.
 - Garmin: a testsúly a Connect-beállításból (`USER_SETTING`) is származhat, nem csak mérlegből.
