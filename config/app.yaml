@@ -28,3 +28,25 @@ database:
   # DuckDB memóriakorlát; e fölött az adatmappa tmp/ alkönyvtárába lapoz (SPEC 4.2: < 4 GB RAM).
   memory_limit: 2GB
   threads: null      # null = összes mag
+
+# Származtatott mutatók (SPEC 5.4) – személyenként
+derived:
+  # Elsődleges forrás kiválasztása személyenként, naponként, metrikánként:
+  # az eszköztípusok sorrendje (az első, amelyiknek aznap van érvényes értéke).
+  source_priority: [watch, phone, summary, app, other]
+  # Metrikánkénti felülírás: metric_key -> source_key (pl. steps: "apple:Az iPhone-om").
+  # Az M4 Beállítások oldal ezt fogja szerkeszteni.
+  primary_source: {}
+  baseline_window_days: 60     # személyes alapvonal: a megelőző N nap (az aznapi nélkül)
+  baseline_min_days: 28        # ennél kevesebb érvényes napnál nincs alapvonal / z-pont
+  band_z: 1.5                  # |z| >= band_z -> az alapvonal sávján kívül
+  regularity_min_nights: 4     # alvási szabályosság (szórás) minimum éjszakaszám az ablakban
+  acwr_acute_days: 7
+  acwr_chronic_days: 28
+
+# Adatminőség (SPEC 4.5)
+quality:
+  gap_min_days: 3              # ennyi vagy több egymást követő adathiányos nap = hézag
+  nonwear_gap_hours: 3         # pulzusminták közti szünet, ami „nem viselt" jel
+  constant_run_samples: 30     # ennyi egymást követő azonos pulzusérték = gyanús (konstans)
+  switch_min_days: 3           # forrásváltás csak akkor, ha az új forrás legalább ennyi napig tart

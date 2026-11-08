@@ -18,3 +18,4 @@
 - Garmin: a mezőleképezés KIZÁRÓLAG `config/garmin_mapping.yaml`-ban; a `transform/garmin.py` ebből generál SQL-t.
 - Személy (háztartás): `dim_person`, `dim_import_batch.person_key`, `dim_source.person_key`; a tényeket a forráson át szűrjük.
 - Valódi export szerkezetét csak `vitalmart schema` kimenetként (értékek nélkül) nézd; azonosítót, értéket ne írj a repóba.
+- Származtatott réteg: `sql/transform/derived/*.sql` (paraméterek: `config/app.yaml` → `derived`, `quality`); numerikus változtatásnál a `tests/test_derived.py` pandas/scipy referenciatesztjeit is futtasd.

@@ -41,3 +41,19 @@ status:
   table_rows: "{table}: {rows} sor"
 persons:
   row: "{person} {name}: {source} {vendor} ({date_from} – {date_to})"
+quality:
+  no_data: "Nincs adatminőségi adat (még nem volt import)."
+  person: "== Személy: {person} =="
+  sources: "Források (metrikák száma, időszak, átlagos napi lefedettség a napi metrikákon):"
+  source_row: "{source}: {metrics} metrika, {date_from} – {date_to}, lefedettség {coverage}%"
+  gaps: "Hézagok (napi metrikák, ≥ beállított napszám): {n} db, a leghosszabb {longest} nap"
+  gap_row: "{source} / {metric}: {date_from} – {date_to} ({days} nap)"
+  flags: "Megjelölt (kizárt, de megőrzött) értékek:"
+  flag_row: "{table} – {flag}: {n} / {total}"
+  nonwear: "Nem viselés / gyanús szakaszok:"
+  kind_hr_gap: "pulzusminták közti hosszú szünet: {n} db, összesen {hours} óra"
+  kind_hr_constant: "konstans pulzus-sorozat: {n} db, összesen {hours} óra"
+  kind_offwrist: '„nem viselt” stressz-jelzés (Garmin): {n} szakasz, összesen {hours} óra'
+  switches: "Forrásváltások (elsődleges forrás):"
+  switch_row: "{date} {metric}: {from_source} → {to_source}"
+  none: "nincs"

@@ -21,6 +21,8 @@ STATUS_TABLES = [
     "fact_hrv_nightly", "fact_activity", "fact_body_measure", "fact_vo2max",
     "fact_daily_summary", "stg_garmin_record", "stg_garmin_fit_file", "stg_garmin_fit_message",
     "fact_stress_sample", "fact_activity_hr_zone", "dim_person",
+    "derived_person_daily", "derived_daily_stats", "derived_sleep_regularity",
+    "derived_weekly_activity", "derived_training_load",
 ]
 
 
@@ -138,6 +140,16 @@ def cmd_schema(cfg: AppConfig, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_quality(cfg: AppConfig, args: argparse.Namespace) -> int:
+    from vitalmart.analytics.quality import quality_report
+
+    con = db.connect(cfg)
+    for line in quality_report(con, args.person):
+        print(line)
+    con.close()
+    return 0
+
+
 def cmd_report(cfg: AppConfig, args: argparse.Namespace) -> int:
     print(t("report.not_implemented"))
     return 2
@@ -181,6 +193,10 @@ def build_parser() -> argparse.ArgumentParser:
     sch = sub.add_parser("schema", help="export szerkezete (mezőnevek, típusok) ÉRTÉKEK NÉLKÜL")
     sch.add_argument("path")
     sch.set_defaults(func=cmd_schema)
+
+    qa = sub.add_parser("quality", help="adatminőségi összefoglaló (lefedettség, hézagok, …)")
+    qa.add_argument("--person", help="csak ennek a személynek")
+    qa.set_defaults(func=cmd_quality)
 
     rep = sub.add_parser("report", help="egészségügyi riport (M6)")
     rep.add_argument("--from", dest="date_from")

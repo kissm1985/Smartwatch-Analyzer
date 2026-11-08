@@ -30,6 +30,7 @@ def connect(cfg: AppConfig, *, read_only: bool = False) -> duckdb.DuckDBPyConnec
     con.execute(f"SET memory_limit = '{cfg.database.memory_limit}'")
     con.execute("SET temp_directory = ?", [str(cfg.data_path / "tmp")])
     con.execute("SET preserve_insertion_order = false")
+    con.execute("SET enable_progress_bar = false")  # we report our own progress
     if cfg.database.threads:
         con.execute(f"SET threads = {int(cfg.database.threads)}")
     if not read_only:

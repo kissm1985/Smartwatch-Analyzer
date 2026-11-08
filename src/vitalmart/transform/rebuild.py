@@ -28,7 +28,7 @@ from vitalmart.timeutil import offset_transitions
 log = logging.getLogger(__name__)
 
 # (directory, optional Python pre-step) in execution order
-STEPS: tuple[str, ...] = ("_pre", "apple", "garmin", "common")
+STEPS: tuple[str, ...] = ("_pre", "apple", "garmin", "common", "derived", "quality")
 
 
 def load_mappings(con: duckdb.DuckDBPyConnection, cfg: AppConfig) -> None:
@@ -105,6 +105,10 @@ def _pre_step(step: str) -> Callable[[duckdb.DuckDBPyConnection, AppConfig], Non
         from vitalmart.transform import garmin
 
         return garmin.prepare
+    if step == "derived":
+        from vitalmart.transform import derived
+
+        return derived.prepare
     return None
 
 

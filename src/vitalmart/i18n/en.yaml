@@ -41,3 +41,19 @@ status:
   table_rows: "{table}: {rows} rows"
 persons:
   row: "{person} {name}: {source} {vendor} ({date_from} – {date_to})"
+quality:
+  no_data: "No data-quality information (nothing imported yet)."
+  person: "== Person: {person} =="
+  sources: "Sources (metrics, period, mean daily coverage of daily metrics):"
+  source_row: "{source}: {metrics} metrics, {date_from} – {date_to}, coverage {coverage}%"
+  gaps: "Gaps (daily metrics, >= configured days): {n}, longest {longest} days"
+  gap_row: "{source} / {metric}: {date_from} – {date_to} ({days} days)"
+  flags: "Flagged (excluded but kept) values:"
+  flag_row: "{table} – {flag}: {n} / {total}"
+  nonwear: "Non-wear / suspicious stretches:"
+  kind_hr_gap: "long pauses between HR samples: {n}, total {hours} h"
+  kind_hr_constant: "constant HR runs: {n}, total {hours} h"
+  kind_offwrist: '"off wrist" stress marks (Garmin): {n} stretches, total {hours} h'
+  switches: "Source switches (primary source):"
+  switch_row: "{date} {metric}: {from_source} → {to_source}"
+  none: "none"

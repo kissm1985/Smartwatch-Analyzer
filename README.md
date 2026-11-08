@@ -17,8 +17,9 @@ külön kezelhetők (személy = elemzési dimenzió, nem felhasználói fiók). 
 | M0 – projektváz, konfig, migrációk, szintetikus adat | ✅ kész |
 | M1 – Apple Health import, staging + core, dim_date/metric/source/activity_type | ✅ kész |
 | M2 – Garmin JSON + FIT import, mezőleképezés YAML-ból, ismeretlen mezők megőrzése | ✅ kész |
-| M3 – származtatott mutatók, adatminőség | ⏳ következik |
-| M4–M9 | ⏳ |
+| M3 – származtatott mutatók, adatminőség (pandas/scipy referenciával ellenőrizve) | ✅ kész |
+| M4 – Streamlit felület (Import, Áttekintés, Adatminőség, Beállítások) | ⏳ következik |
+| M5–M9 | ⏳ |
 
 ## Telepítés
 
@@ -59,6 +60,7 @@ További parancsok:
 | `vitalmart init` | adatbázis létrehozása / migrálása |
 | `vitalmart import <zip/mappa/xml/fit> [--person KOD] [--force] [--preview] [--source apple_health\|garmin]` | import |
 | `vitalmart persons [--set-name KOD NEV]` | személyek és eszközeik |
+| `vitalmart quality [--person KOD]` | adatminőségi összefoglaló: lefedettség, hézagok, megjelölt értékek, nem viselés, forrásváltások |
 | `vitalmart schema <export>` | az export szerkezete (mezőnevek, típusok) **értékek nélkül** – biztonságosan megosztható |
 | `vitalmart rebuild` | a core réteg teljes újraépítése a stagingből (pl. időzóna-váltás után) |
 | `vitalmart status` | táblák sorszáma |
@@ -163,17 +165,44 @@ export.zip ──(lxml iterparse, streaming)──► stg_apple_*      (nyers é
 - **Konfiguráció:** `config/app.yaml` (időzóna, alvás, memória), `config/metrics.yaml`
   (metrika-katalógus), `config/apple_mapping.yaml` (HK típusok, mértékegységek, edzéstípusok).
 
+## Származtatott mutatók (M3)
+
+Minden import után automatikusan újraépülnek, **személyenként**:
+
+| Tábla | Tartalom |
+|---|---|
+| `derived_person_daily` | személy × nap × metrika egy értéke az **elsődleges forrásból** (`derived.source_priority`: óra > telefon > összesítő > app; metrikánként felülírható: `derived.primary_source`) |
+| `derived_daily_stats` | 7/28 napos mozgóátlag és -medián, trend (MA7 − MA28), **személyes alapvonal** (megelőző 60 nap, min. 28 érvényes nap: átlag, szórás, medián, MAD), z-pont, robusztus z, alapvonal-sávon kívül? |
+| `derived_sleep_regularity` | lefekvés/ébredés szórása 7/14 napon, alvási adósság (cél: `sleep.goal_hours`) |
+| `derived_weekly_activity` | heti WHO-egyenértékes percek (mérsékelt + 2 × intenzív), erősítő napok, edzésszám, pihenőnapok és szabályosságuk |
+| `derived_training_load` | napi terhelés (eszköz-terhelés → Edwards-TRIMP a pulzuszónákból → időtartam), akut:krónikus arány 7:28 – **módszertani közelítés** |
+
+Fontos döntések:
+- Az alapvonal a **megelőző** napokból számol (az aznapi érték nincs benne), a szórás mintaszórás (ddof = 1),
+  a MAD skálázatlan; robusztus z = (érték − medián) / (1,4826 × MAD). A tesztek ezeket egy független
+  pandas/scipy implementációval vetik össze (relatív eltérés < 1e-9).
+- HRV módszerenként külön (`hrv_sdnn`, `hrv_rmssd`, ill. `ln_hrv_*` a trendhez) – sosem keveredik.
+- Apple-nél nincs mérsékelt/intenzív bontás: az Edzés-gyűrű perce **mérsékeltként** számít (konzervatív);
+  a heti sor `who_method` oszlopa jelzi, melyik módszer szerepel.
+- Ugyanannak a személynek két forrásból rögzített, időben átfedő edzése egyszer számít (jobb forrás).
+- A reproduktív egészségi és az automatikusan felvett (ismeretlen) metrikák nem kerülnek a származtatott rétegbe.
+
+Adatminőség (`dq_*` táblák, `vitalmart quality`): lefedettség forrásonként és metrikánként, hézagok
+(csak napi gyakoriságú metrikákra, `quality.gap_min_days`), megjelölt értékek összesítése, nem viselés jelei
+(hosszú szünet a pulzusmintákban, konstans pulzus-sorozat, Garmin „nem viselt” stressz-jelzés),
+elsődleges forrás váltása (legalább `quality.switch_min_days` napig tartó új forrás).
+
 ## Teljesítmény (szintetikus adaton mérve)
 
 | Export | Rekord | Idő | Csúcsmemória |
 |---|---|---|---|
 | 230 MB `export.xml` | 0,58 M | 9 s | 2,2 GB |
-| 1,0 GB `export.xml` | 2,52 M | 62 s | 3,3 GB |
+| 1,0 GB `export.xml` (import + core + származtatott réteg) | 2,52 M | 71 s | 3,4 GB |
 
 A DuckDB memóriakorlátja `config/app.yaml` → `database.memory_limit` (alapérték 2 GB);
 e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd lejjebb.
 
-## Ismert korlátok (M1–M2)
+## Ismert korlátok (M1–M3)
 
 - A core réteg minden importnál **teljesen** újraépül (gyors, de nem inkrementális – SPEC 10.3 SHOULD, M9).
 - Az Apple napi összesítő (`fact_daily_summary`) forrásonként külön sor (óra és iPhone
@@ -195,6 +224,10 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - Garmin: a Connect-export alvásadata csak fázis-összegeket tartalmaz (hipnogram-intervallum
   nincs); a napon belüli pulzus/stressz csak az óráról másolt FIT Monitor-fájlokból jön.
 - Garmin: a testsúly a Connect-beállításból (`USER_SETTING`) is származhat, nem csak mérlegből.
+- Csak FIT Monitor-fájlokból (Connect-export nélkül) még nem képződik napi összesítő, így
+  származtatott napi mutató sem; a pulzus- és stresszminták és az adatminőségi jelek megvannak.
+- Az ACWR terhelési módszere személyen belül változhat (pl. Garmin TRIMP vs. Apple időtartam);
+  a `load_method` oszlop jelzi, a riport (M6) ezt figyelmeztetéssel kezeli.
 - A Garmin-tevékenységtípusok egységesítése (`activity_types` a YAML-ban) a te edzéseidhez
   igazítható; pl. az `indoor_cardio` jelenleg „egyéb / aerob".
 

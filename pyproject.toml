@@ -25,6 +25,8 @@ dev = [
     "mypy>=1.10",
     "types-pyyaml",
     "lxml-stubs",
+    "pandas>=2.2",
+    "scipy>=1.13",
 ]
 
 [build-system]

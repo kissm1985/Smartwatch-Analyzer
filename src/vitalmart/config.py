@@ -26,6 +26,25 @@ class ImportConfig(BaseModel):
     chunk_size: int = Field(50_000, ge=100)
 
 
+class DerivedConfig(BaseModel):
+    source_priority: list[str] = Field(
+        default_factory=lambda: ["watch", "phone", "summary", "app", "other"])
+    primary_source: dict[str, str] = Field(default_factory=dict)
+    baseline_window_days: int = Field(60, ge=7, le=365)
+    baseline_min_days: int = Field(28, ge=2, le=365)
+    band_z: float = Field(1.5, gt=0)
+    regularity_min_nights: int = Field(4, ge=2, le=14)
+    acwr_acute_days: int = Field(7, ge=1, le=28)
+    acwr_chronic_days: int = Field(28, ge=7, le=120)
+
+
+class QualityConfig(BaseModel):
+    gap_min_days: int = Field(3, ge=1)
+    nonwear_gap_hours: float = Field(3, gt=0)
+    constant_run_samples: int = Field(30, ge=3)
+    switch_min_days: int = Field(3, ge=1)
+
+
 class DatabaseConfig(BaseModel):
     memory_limit: str = Field("2GB", pattern=r"^\d+(\.\d+)?\s*(KB|MB|GB|KiB|MiB|GiB)$")
     threads: int | None = Field(None, ge=1)
@@ -43,6 +62,8 @@ class AppConfig(BaseModel):
         default_factory=lambda: ImportConfig.model_validate({}), alias="import"
     )
     database: DatabaseConfig = Field(default_factory=lambda: DatabaseConfig.model_validate({}))
+    derived: DerivedConfig = Field(default_factory=lambda: DerivedConfig.model_validate({}))
+    quality: QualityConfig = Field(default_factory=lambda: QualityConfig.model_validate({}))
     config_dir: Path = CONFIG_DIR
 
     model_config = {"populate_by_name": True}
