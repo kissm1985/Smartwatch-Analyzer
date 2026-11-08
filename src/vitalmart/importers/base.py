@@ -56,8 +56,12 @@ class LoadCounts:
     errors: int = 0
     first_utc: datetime | None = None
     last_utc: datetime | None = None
+    # earlier batches whose rows this load matched (same content or natural key);
+    # used to detect a device being claimed by a different person
+    matched_batches: set[int] = field(default_factory=set)
 
     def add(self, other: LoadCounts) -> None:
+        self.matched_batches |= other.matched_batches
         self.read += other.read
         self.new += other.new
         self.updated += other.updated

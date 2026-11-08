@@ -78,7 +78,7 @@ def test_time_of_day(con):
 def test_static_dims(con):
     stages = {r[0] for r in con.execute("SELECT stage_key FROM dim_sleep_stage").fetchall()}
     assert stages == {"awake", "light", "deep", "rem", "in_bed", "unspecified"}
-    assert scalar(con, "SELECT count(*) FROM dim_hr_zone") == 5
+    assert scalar(con, "SELECT count(*) FROM dim_hr_zone") == 6  # 0 = below zone 1
 
 
 def test_backup(cfg, con):

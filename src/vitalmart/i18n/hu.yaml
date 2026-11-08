@@ -13,12 +13,16 @@ db:
 import:
   detecting: "Forrás felismerése: {path}"
   detected: "Felismert forrás: {adapter}"
-  unknown_source: "A megadott útvonalon nem található támogatott export (Apple Health export.zip / export.xml)."
+  unknown_source: "A megadott útvonalon nem található támogatott export (Apple Health export.zip / export.xml, Garmin Connect export ZIP / mappa, FIT-fájl)."
   not_found: "A fájl vagy mappa nem létezik: {path}"
   duplicate_file: "Ezt a fájlt (SHA-256 egyezés) már betöltötted ({batch}. import). Kihagyva – újratöltéshez használd a --force kapcsolót."
   failed: "Az import sikertelen, az adatbázis változatlan maradt. Ok: {reason}"
   bad_zip: "A ZIP-fájl sérült vagy nem olvasható."
   bad_xml: "Az XML-fájl sérült vagy csonka (pl. megszakadt letöltés)."
+  bad_json: "A(z) {file} JSON-fájl sérült vagy nem olvasható."
+  bad_fit: "A(z) {file} FIT-fájl sérült vagy nem olvasható."
+  person_conflict: "Ugyanaz az eszköz ({sources}) már egy másik személyhez tartozik. Ellenőrizd a --person értékét."
+  invalid_person: "Érvénytelen személykód: {person} (csak kisbetű, szám, aláhúzás; max. 32 karakter)."
   missing_export_xml: "A ZIP nem tartalmaz apple_health_export/export.xml fájlt."
   summary: >-
     Import kész (#{batch}): beolvasva {read}, új {new}, frissített {updated},
@@ -35,3 +39,5 @@ report:
 status:
   header: "Adatbázis: {path} (sémaverzió: {version})"
   table_rows: "{table}: {rows} sor"
+persons:
+  row: "{person} {name}: {source} {vendor} ({date_from} – {date_to})"

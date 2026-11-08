@@ -34,6 +34,8 @@ class AppConfig(BaseModel):
     db_file: str = "vitalmart.duckdb"
     timezone: str = "Europe/Budapest"
     language: Literal["hu", "en"] = "hu"
+    # Household: each export is attributed to a person (import --person); default below.
+    default_person: str = Field("me", pattern=r"^[a-z0-9_]{1,32}$")
     sleep: SleepConfig = Field(default_factory=lambda: SleepConfig.model_validate({}))
     import_: ImportConfig = Field(
         default_factory=lambda: ImportConfig.model_validate({}), alias="import"

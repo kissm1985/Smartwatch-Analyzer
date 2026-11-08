@@ -1,8 +1,9 @@
--- Daily summary per (local date, source) from the granular facts.
+-- Apple daily summary per (local date, source) from the granular facts
+-- (Apple has no source-provided daily summary except the rings in fact_measurement).
 -- Interval quantities (e.g. steps) are attributed to the local date of their start.
 -- moderate/vigorous minutes: not provided by Apple (exercise_min is Apple's
 -- "Exercise" ring minutes); they are filled by vendors that report them.
-DELETE FROM fact_daily_summary;
+DELETE FROM fact_daily_summary WHERE source_key LIKE 'apple:%';
 
 INSERT INTO fact_daily_summary
 WITH m AS (
@@ -24,7 +25,7 @@ WITH m AS (
         avg(value) FILTER (WHERE metric_key = 'respiratory_rate') AS rr,
         max(import_batch_id) AS bid
     FROM fact_measurement
-    WHERE quality_flag = 'ok'
+    WHERE quality_flag = 'ok' AND source_key LIKE 'apple:%'
       AND metric_key IN ('steps', 'distance_walk_run', 'active_energy', 'basal_energy',
                          'flights_climbed', 'exercise_time', 'stand_time', 'resting_hr',
                          'walking_hr_avg', 'stress', 'body_battery', 'spo2', 'respiratory_rate')
@@ -33,7 +34,7 @@ WITH m AS (
     SELECT date_key, source_key, min(bpm) AS hr_min, max(bpm) AS hr_max, avg(bpm) AS hr_avg,
            count(*) AS n, max(import_batch_id) AS bid
     FROM fact_heart_rate_sample
-    WHERE quality_flag = 'ok'
+    WHERE quality_flag = 'ok' AND source_key LIKE 'apple:%'
     GROUP BY date_key, source_key
 )
 SELECT

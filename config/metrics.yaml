@@ -31,3 +31,29 @@ metrics:
   summary_active_energy:  {name_hu: Mozgás-gyűrű (aktív energia), name_en: Move ring active energy, category: activity, unit: kcal, agg: SUM, better: higher, valid_min: 0, valid_max: 15000}
   summary_exercise_time:  {name_hu: Edzés-gyűrű (perc), name_en: Exercise ring minutes, category: activity, unit: min, agg: SUM, better: higher, valid_min: 0, valid_max: 1440}
   summary_stand_hours:    {name_hu: Állás-gyűrű (óra), name_en: Stand ring hours, category: activity, unit: count, agg: SUM, better: higher, valid_min: 0, valid_max: 24}
+  # Garmin-specifikus (a Garmin napi összesítőből és alvásadatokból)
+  stress_awake:           {name_hu: Stressz ébren (Garmin), name_en: Stress awake (Garmin), category: stress, unit: score, agg: AVG, better: lower, valid_min: 0, valid_max: 100}
+  stress_asleep:          {name_hu: Stressz alvás közben (Garmin), name_en: Stress asleep (Garmin), category: stress, unit: score, agg: AVG, better: lower, valid_min: 0, valid_max: 100}
+  stress_max:             {name_hu: Maximális stressz (Garmin), name_en: Max stress (Garmin), category: stress, unit: score, agg: MAX, better: lower, valid_min: 0, valid_max: 100}
+  stress_high_min:        {name_hu: Magas stresszű idő, name_en: High stress time, category: stress, unit: min, agg: SUM, better: lower, valid_min: 0, valid_max: 1440}
+  stress_medium_min:      {name_hu: Közepes stresszű idő, name_en: Medium stress time, category: stress, unit: min, agg: SUM, better: lower, valid_min: 0, valid_max: 1440}
+  stress_low_min:         {name_hu: Alacsony stresszű idő, name_en: Low stress time, category: stress, unit: min, agg: SUM, better: neutral, valid_min: 0, valid_max: 1440}
+  stress_rest_min:        {name_hu: Pihenési idő (stressz), name_en: Rest time (stress), category: stress, unit: min, agg: SUM, better: higher, valid_min: 0, valid_max: 1440}
+  stress_measured_min:    {name_hu: Stresszmérés időtartama, name_en: Stress measured time, category: stress, unit: min, agg: SUM, better: neutral, valid_min: 0, valid_max: 1440}
+  body_battery_sleep_start: {name_hu: Body Battery elalváskor, name_en: Body Battery at sleep start, category: stress, unit: score, agg: AVG, better: neutral, valid_min: 0, valid_max: 100}
+  body_battery_sleep_end: {name_hu: Body Battery ébredéskor, name_en: Body Battery at wake, category: stress, unit: score, agg: AVG, better: higher, valid_min: 0, valid_max: 100}
+  body_battery_charged:   {name_hu: Body Battery töltődés, name_en: Body Battery charged, category: stress, unit: score, agg: SUM, better: higher, valid_min: 0, valid_max: 200}
+  body_battery_drained:   {name_hu: Body Battery merülés, name_en: Body Battery drained, category: stress, unit: score, agg: SUM, better: neutral, valid_min: 0, valid_max: 200}
+  respiration_max:        {name_hu: Légzésszám maximum, name_en: Respiration max, category: respiration, unit: breaths/min, agg: MAX, better: neutral, valid_min: 4, valid_max: 60}
+  respiration_min:        {name_hu: Légzésszám minimum, name_en: Respiration min, category: respiration, unit: breaths/min, agg: MIN, better: neutral, valid_min: 2, valid_max: 60}
+  hydration_intake:       {name_hu: Folyadékbevitel, name_en: Hydration intake, category: body, unit: mL, agg: SUM, better: neutral, valid_min: 0, valid_max: 15000}
+  sweat_loss:             {name_hu: Becsült izzadási veszteség, name_en: Estimated sweat loss, category: body, unit: mL, agg: SUM, better: neutral, valid_min: 0, valid_max: 15000}
+  active_time:            {name_hu: Aktív idő, name_en: Active time, category: activity, unit: min, agg: SUM, better: higher, valid_min: 0, valid_max: 1440}
+  highly_active_time:     {name_hu: Nagyon aktív idő, name_en: Highly active time, category: activity, unit: min, agg: SUM, better: higher, valid_min: 0, valid_max: 1440}
+  sleep_score:            {name_hu: Alvás-pontszám (Garmin), name_en: Sleep score (Garmin), category: sleep, unit: score, agg: AVG, better: higher, valid_min: 0, valid_max: 100, note: "Forrásfüggő, gyártói algoritmus."}
+  sleep_score_quality:    {name_hu: Alvásminőség-pontszám (Garmin), name_en: Sleep quality score (Garmin), category: sleep, unit: score, agg: AVG, better: higher, valid_min: 0, valid_max: 100}
+  sleep_score_duration:   {name_hu: Alvásidő-pontszám (Garmin), name_en: Sleep duration score (Garmin), category: sleep, unit: score, agg: AVG, better: higher, valid_min: 0, valid_max: 100}
+  sleep_score_recovery:   {name_hu: Regenerációs pontszám (Garmin), name_en: Sleep recovery score (Garmin), category: sleep, unit: score, agg: AVG, better: higher, valid_min: 0, valid_max: 100}
+  spo2_sleep_min:         {name_hu: Legalacsonyabb SpO₂ alvás közben, name_en: Lowest SpO2 during sleep, category: respiration, unit: "%", agg: MIN, better: higher, valid_min: 50, valid_max: 100}
+  sleep_awake_count:      {name_hu: Ébredések száma, name_en: Awakenings, category: sleep, unit: count, agg: SUM, better: lower, valid_min: 0, valid_max: 100}
+  sleep_restless_moments: {name_hu: Nyugtalan pillanatok, name_en: Restless moments, category: sleep, unit: count, agg: SUM, better: lower, valid_min: 0, valid_max: 1000}

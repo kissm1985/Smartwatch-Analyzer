@@ -13,12 +13,16 @@ db:
 import:
   detecting: "Detecting source: {path}"
   detected: "Detected source: {adapter}"
-  unknown_source: "No supported export found at the given path (Apple Health export.zip / export.xml)."
+  unknown_source: "No supported export found at the given path (Apple Health export.zip / export.xml, Garmin Connect export ZIP / folder, FIT file)."
   not_found: "File or folder does not exist: {path}"
   duplicate_file: "This file (same SHA-256) was already imported (batch {batch}). Skipped – use --force to reload."
   failed: "Import failed, the database was left unchanged. Reason: {reason}"
   bad_zip: "The ZIP file is corrupt or unreadable."
   bad_xml: "The XML file is corrupt or truncated (e.g. interrupted download)."
+  bad_json: "The JSON file {file} is corrupt or unreadable."
+  bad_fit: "The FIT file {file} is corrupt or unreadable."
+  person_conflict: "The same device ({sources}) already belongs to another person. Check --person."
+  invalid_person: "Invalid person code: {person} (lowercase letters, digits, underscore; max 32)."
   missing_export_xml: "The ZIP does not contain apple_health_export/export.xml."
   summary: >-
     Import done (#{batch}): read {read}, new {new}, updated {updated},
@@ -35,3 +39,5 @@ report:
 status:
   header: "Database: {path} (schema version: {version})"
   table_rows: "{table}: {rows} rows"
+persons:
+  row: "{person} {name}: {source} {vendor} ({date_from} – {date_to})"

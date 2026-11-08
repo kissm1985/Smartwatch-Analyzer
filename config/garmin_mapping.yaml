@@ -1,0 +1,201 @@
+# Garmin Connect "Adatok exportálása" (DI_CONNECT) leképezés – SPEC 4.1/B.
+#
+# Felismerés: fájlnév-minta (match.filename, regex) ÉS tartalom (match.any_keys: az első
+# rekord legalább egy kulcsot tartalmazzon). Séma-változáskor ezt a fájlt kell módosítani,
+# nem a kódot. A nyers rekord MINDIG változatlanul a stg_garmin_record.payload-ba kerül
+# (ismeretlen mezőkkel együtt).
+#
+# Mező-útvonal szintaxis:  a.b.c          – beágyazott kulcs
+#                          lista[k=v].x   – a lista azon eleme, ahol k == v
+#                          [p1, p2]       – az első nem üres (pl. eltérő kis/nagybetűs kulcsok)
+# type: number (alapértelmezés) | string | date | timestamp (UTC szöveg) | epoch_ms
+# factor / divide: szorzó / osztó a cél-mértékegységre (lásd a megjegyzéseket)
+# daily:  a fact_daily_summary oszlopa (a Garmin napi összesítője elsődleges, SPEC 5.3/4)
+# metric: a fact_measurement metrikakódja (napi érték a calendar_date napjára)
+#
+# Ismeretlen mezők: a fel nem sorolt, numerikus felső szintű mezők automatikusan
+# "garmin_<fájltípus>_<mező>" metrikaként a fact_measurement-be kerülnek (ha a rekordnak
+# van dátuma), kivéve az ignore_field_patterns mintáinak megfelelőket (azonosítók, célok,
+# időbélyegek).
+
+# Csak ezekben a mappákban dolgozunk fel ismeretlen JSON-fájlokat; a többi (pl. a
+# személyes profil a DI-Connect-User alatt) csak nyilvántartásba kerül, beolvasás nélkül.
+include_folders: [DI-Connect-Wellness, DI-Connect-Aggregator, DI-Connect-Fitness, DI-Connect-Metrics]
+exclude_folders: [DI-Connect-User, DI_LIVETRACK, DI_FACEIT_CLOUD, IT_DEVICE_AND_CONTENT, customer_data, DI-GOLF, DI-ATP]
+# Beágyazott ZIP-ek, amelyekben FIT-fájlok vannak (feltöltött aktivitások)
+fit_zip_patterns: ['^UploadedFiles_.*\.zip$']
+
+user_pk_from_filename: '(\d{5,})_'
+user_pk_paths: [userProfilePK, userProfilePk, userProfileId, metaData.userProfilePK]
+date_paths: [calendarDate, calendar_date, date]
+
+ignore_field_patterns:
+  - '(?i).*(pk|id|uuid.*|lsb|msb)$'
+  - '(?i).*(timestamp|gmt|local|time)$'
+  - '(?i).*goal.*'
+  - '(?i)^(version|source|sequence|rule|retro|favorite|parent|pr|purposeful|atpactivity|durationinmilliseconds)$'
+  - '(?i)^(includes|is|has|usersetnull|autocalc|deco|elevationcorrected).*'
+  - '(?i).*(latitude|longitude)$'
+
+files:
+  # ------------------------------------------------------------ napi összesítő
+  uds:
+    match: {filename: '^UDSFile_.*\.json$', any_keys: [totalSteps, allDayStress, calendarDate]}
+    natural_key: [calendarDate]
+    fields:
+      calendar_date:      {path: calendarDate, type: date}
+      steps:              {path: totalSteps, daily: steps}
+      distance_km:        {path: totalDistanceMeters, divide: 1000, daily: distance_km}      # m → km
+      total_kcal:         {path: totalKilocalories, daily: total_kcal}
+      active_kcal:        {path: activeKilocalories, daily: active_kcal}
+      basal_kcal:         {path: bmrKilocalories, daily: basal_kcal}
+      moderate_min:       {path: moderateIntensityMinutes, daily: moderate_min}
+      vigorous_min:       {path: vigorousIntensityMinutes, daily: vigorous_min}
+      flights:            {path: floorsAscended, daily: flights_climbed}   # Venu Sq 2: nincs barométer
+      resting_hr:         {path: restingHeartRate, daily: resting_hr, metric: resting_hr}
+      hr_min:             {path: minHeartRate, daily: hr_min}
+      hr_max:             {path: maxHeartRate, daily: hr_max}
+      stress_avg:         {path: 'allDayStress.aggregatorList[type=TOTAL].averageStressLevel', daily: stress_avg, metric: stress}
+      stress_awake_avg:   {path: 'allDayStress.aggregatorList[type=AWAKE].averageStressLevel', metric: stress_awake}
+      stress_asleep_avg:  {path: 'allDayStress.aggregatorList[type=ASLEEP].averageStressLevel', metric: stress_asleep}
+      stress_max:         {path: 'allDayStress.aggregatorList[type=TOTAL].maxStressLevel', metric: stress_max}
+      stress_high_min:    {path: 'allDayStress.aggregatorList[type=TOTAL].highDuration', divide: 60, metric: stress_high_min}     # s → min
+      stress_medium_min:  {path: 'allDayStress.aggregatorList[type=TOTAL].mediumDuration', divide: 60, metric: stress_medium_min}
+      stress_low_min:     {path: 'allDayStress.aggregatorList[type=TOTAL].lowDuration', divide: 60, metric: stress_low_min}
+      stress_rest_min:    {path: 'allDayStress.aggregatorList[type=TOTAL].restDuration', divide: 60, metric: stress_rest_min}
+      stress_measured_min: {path: 'allDayStress.aggregatorList[type=TOTAL].totalDuration', divide: 60, metric: stress_measured_min}
+      body_battery_max:   {path: 'bodyBattery.bodyBatteryStatList[bodyBatteryStatType=HIGHEST].statsValue', daily: body_battery_max}
+      body_battery_min:   {path: 'bodyBattery.bodyBatteryStatList[bodyBatteryStatType=LOWEST].statsValue', daily: body_battery_min}
+      body_battery_sleep_start: {path: 'bodyBattery.bodyBatteryStatList[bodyBatteryStatType=SLEEPSTART].statsValue', metric: body_battery_sleep_start}
+      body_battery_sleep_end:   {path: 'bodyBattery.bodyBatteryStatList[bodyBatteryStatType=SLEEPEND].statsValue', metric: body_battery_sleep_end}
+      body_battery_charged: {path: bodyBattery.chargedValue, metric: body_battery_charged}
+      body_battery_drained: {path: bodyBattery.drainedValue, metric: body_battery_drained}
+      spo2_avg:           {path: averageSpo2Value, daily: spo2_avg}
+      spo2_min:           {path: lowestSpo2Value, daily: spo2_min}
+      respiration_avg:    {path: respiration.avgWakingRespirationValue, daily: respiratory_rate_avg}
+      respiration_max:    {path: respiration.highestRespirationValue, metric: respiration_max}
+      respiration_min:    {path: respiration.lowestRespirationValue, metric: respiration_min}
+      hydration_ml:       {path: hydration.valueInML, metric: hydration_intake}
+      sweat_loss_ml:      {path: hydration.sweatLossInML, metric: sweat_loss}
+      active_sec:         {path: activeSeconds, divide: 60, metric: active_time}       # s → min
+      highly_active_sec:  {path: highlyActiveSeconds, divide: 60, metric: highly_active_time}
+
+  # ------------------------------------------------------------ alvás (szakasz-összegek; fázis-intervallum nincs)
+  sleep:
+    match: {filename: '.*sleepData\.json$', any_keys: [sleepStartTimestampGMT, deepSleepSeconds]}
+    natural_key: [calendarDate]
+    fields:
+      calendar_date:  {path: calendarDate, type: date}
+      device_id:      {path: spo2SleepSummary.deviceId, type: string}
+      start_utc:      {path: sleepStartTimestampGMT, type: timestamp}
+      end_utc:        {path: sleepEndTimestampGMT, type: timestamp}
+      deep_min:       {path: deepSleepSeconds, divide: 60}
+      light_min:      {path: lightSleepSeconds, divide: 60}
+      rem_min:        {path: remSleepSeconds, divide: 60}
+      awake_min:      {path: awakeSleepSeconds, divide: 60}
+      unmeasurable_min: {path: unmeasurableSeconds, divide: 60}
+      sleep_score:    {path: sleepScores.overallScore, metric: sleep_score}
+      sleep_score_quality:  {path: sleepScores.qualityScore, metric: sleep_score_quality}
+      sleep_score_duration: {path: sleepScores.durationScore, metric: sleep_score_duration}
+      sleep_score_recovery: {path: sleepScores.recoveryScore, metric: sleep_score_recovery}
+      hr_avg:         {path: spo2SleepSummary.averageHR}
+      spo2_avg:       {path: spo2SleepSummary.averageSPO2}
+      spo2_min:       {path: spo2SleepSummary.lowestSPO2, metric: spo2_sleep_min}
+      respiration_avg: {path: averageRespiration}
+      stress_avg:     {path: avgSleepStress}
+      awake_count:    {path: awakeCount, metric: sleep_awake_count}
+      restless_count: {path: restlessMomentCount, metric: sleep_restless_moments}
+
+  # ------------------------------------------------------------ edzések
+  # Egységek az exportban: duration ms, distance cm, avgSpeed cm/ms, elevation cm,
+  # calories kJ (!), hrTimeInZone_N ms.
+  activities:
+    match: {filename: '.*summarizedActivities\.json$', any_keys: [summarizedActivitiesExport, activityId]}
+    unwrap: summarizedActivitiesExport
+    natural_key: [activityId]
+    fields:
+      activity_id:   {path: activityId, type: string}
+      device_id:     {path: deviceId, type: string}
+      activity_type: {path: activityType, type: string}
+      sport_type:    {path: sportType, type: string}
+      start_utc:     {path: [startTimeGmt, beginTimestamp], type: epoch_ms}
+      duration_min:  {path: duration, divide: 60000}                       # ms → min
+      distance_km:   {path: distance, divide: 100000}                      # cm → km
+      energy_kcal:   {path: calories, divide: 4.184}                      # kJ → kcal
+      hr_avg:        {path: avgHr}
+      hr_max:        {path: maxHr}
+      hr_min:        {path: minHr}
+      avg_speed_kmh: {path: avgSpeed, factor: 36}                          # cm/ms → km/h
+      elevation_gain_m: {path: elevationGain, divide: 100}                 # cm → m
+      aerobic_effect:   {path: aerobicTrainingEffect}
+      anaerobic_effect: {path: anaerobicTrainingEffect}
+      training_load:    {path: activityTrainingLoad}
+      vo2max:           {path: vO2MaxValue}
+      steps:            {path: steps}
+      moderate_min:     {path: moderateIntensityMinutes}
+      vigorous_min:     {path: vigorousIntensityMinutes}
+    hr_zones: {path_template: 'hrTimeInZone_{zone}', zones: [0, 1, 2, 3, 4, 5, 6], divide: 1000}   # ms → s
+
+  # ------------------------------------------------------------ VO2max (MaxMet)
+  vo2max:
+    match: {filename: '^MetricsMaxMetData_.*\.json$', any_keys: [vo2MaxValue, maxMet]}
+    natural_key: [calendarDate, updateTimestamp]
+    fields:
+      calendar_date: {path: calendarDate, type: date}
+      device_id:     {path: deviceId, type: string}
+      updated_at:    {path: updateTimestamp, type: timestamp}
+      vo2max:        {path: vo2MaxValue}
+      sport:         {path: sport, type: string}
+
+  # ------------------------------------------------------------ testadatok (súly g, magasság cm)
+  biometrics:
+    match: {filename: '.*_userBioMetrics\.json$', any_keys: [metaData, weight, height]}
+    natural_key: [version]
+    fields:
+      record_local:  {path: metaData.calendarDate, type: timestamp}
+      weight_kg:     {path: weight.weight, divide: 1000}                   # g → kg
+      weight_utc:    {path: weight.timestampGMT, type: timestamp}
+      weight_source: {path: weight.sourceType, type: string}
+      height_m:      {path: height, divide: 100}                           # cm → m
+
+  # ------------------------------------------------------------ csak nyers tárolás (profil M4-hez)
+  heart_rate_zones:
+    match: {filename: '.*_heartRateZones\.json$', any_keys: [zone1Floor, maxHeartRateUsed]}
+    eav: false
+    fields: {}
+
+# Garmin edzéstípusok → egységesített típus (dim_activity_type). A kulcs a JSON
+# activityType vagy a FIT sport/sub_sport neve (kisbetűvel).
+activity_types:
+  running:             {unified: running, category: aerobic}
+  treadmill_running:   {unified: running, category: aerobic}
+  trail_running:       {unified: running, category: aerobic}
+  indoor_running:      {unified: running, category: aerobic}
+  walking:             {unified: walking, category: aerobic}
+  casual_walking:      {unified: walking, category: aerobic}
+  hiking:              {unified: hiking, category: aerobic}
+  cycling:             {unified: cycling, category: aerobic}
+  road_biking:         {unified: cycling, category: aerobic}
+  indoor_cycling:      {unified: cycling, category: aerobic}
+  mountain_biking:     {unified: cycling, category: aerobic}
+  lap_swimming:        {unified: swimming, category: aerobic}
+  open_water_swimming: {unified: swimming, category: aerobic}
+  swimming:            {unified: swimming, category: aerobic}
+  strength_training:   {unified: strength, category: anaerobic}
+  hiit:                {unified: hiit, category: anaerobic}
+  yoga:                {unified: yoga, category: mobility}
+  pilates:             {unified: yoga, category: mobility}
+  breathwork:          {unified: yoga, category: mobility}
+  elliptical:          {unified: other, category: aerobic}
+  stair_climbing:      {unified: other, category: aerobic}
+  indoor_rowing:       {unified: other, category: aerobic}
+  indoor_cardio:       {unified: other, category: aerobic}
+  fitness_equipment:   {unified: other, category: aerobic}
+  training:            {unified: other, category: aerobic}
+
+# FIT stressz-kategóriák (Garmin): <0 = érvénytelen (−1 nem viselt, −2 túl aktív)
+stress_categories:
+  - {max: 25, key: rest}
+  - {max: 50, key: low}
+  - {max: 75, key: medium}
+  - {max: 100, key: high}

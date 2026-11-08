@@ -1,7 +1,8 @@
 # VitalMart
 
-Helyben futó, egyfelhasználós **okosóra-adatpiac és egészségügyi elemző** alkalmazás
-(Apple Watch / Apple Health, később Garmin Venu Sq 2). A követelmények forrása a
+Helyben futó **okosóra-adatpiac és egészségügyi elemző** alkalmazás
+(Apple Watch / Apple Health, Garmin Venu Sq 2). Egy háztartás több személyének adatai
+külön kezelhetők (személy = elemzési dimenzió, nem felhasználói fiók). A követelmények forrása a
 [`SPEC.md`](SPEC.md), a fejlesztési szabályok a [`CLAUDE.md`](CLAUDE.md)-ben vannak.
 
 > **Adatvédelem:** minden adat kizárólag a gépeden, az adatmappában (`data/`, gitignore-olva)
@@ -15,8 +16,9 @@ Helyben futó, egyfelhasználós **okosóra-adatpiac és egészségügyi elemző
 |---|---|
 | M0 – projektváz, konfig, migrációk, szintetikus adat | ✅ kész |
 | M1 – Apple Health import, staging + core, dim_date/metric/source/activity_type | ✅ kész |
-| M2 – Garmin JSON + FIT import | ⏳ következik (lásd SPEC 14.1: kell egy valódi export szerkezete értékek nélkül) |
-| M3–M9 | ⏳ |
+| M2 – Garmin JSON + FIT import, mezőleképezés YAML-ból, ismeretlen mezők megőrzése | ✅ kész |
+| M3 – származtatott mutatók, adatminőség | ⏳ következik |
+| M4–M9 | ⏳ |
 
 ## Telepítés
 
@@ -41,8 +43,13 @@ uv run vitalmart import --preview data/sample/export.zip
 # 3) betöltés (haladásjelzővel, tranzakcióban)
 uv run vitalmart import data/sample/export.zip
 
-# 4) mi került be?
+# 4) Garmin minta (szintetikus) egy másik személyhez
+uv run python tools/make_sample_data.py --garmin --out data/sample
+uv run vitalmart import --person me data/sample/garmin_export.zip
+
+# 5) mi került be, kihez?
 uv run vitalmart status
+uv run vitalmart persons
 ```
 
 További parancsok:
@@ -50,7 +57,9 @@ További parancsok:
 | Parancs | Leírás |
 |---|---|
 | `vitalmart init` | adatbázis létrehozása / migrálása |
-| `vitalmart import <zip/mappa/xml> [--force] [--preview] [--source apple_health]` | import |
+| `vitalmart import <zip/mappa/xml/fit> [--person KOD] [--force] [--preview] [--source apple_health\|garmin]` | import |
+| `vitalmart persons [--set-name KOD NEV]` | személyek és eszközeik |
+| `vitalmart schema <export>` | az export szerkezete (mezőnevek, típusok) **értékek nélkül** – biztonságosan megosztható |
 | `vitalmart rebuild` | a core réteg teljes újraépítése a stagingből (pl. időzóna-váltás után) |
 | `vitalmart status` | táblák sorszáma |
 | `vitalmart backup` | adatbázis-másolat a `data/backups/` mappába |
@@ -71,9 +80,48 @@ Feldolgozott tartalom: `export.xml` (`Record`, `Workout`, `ActivitySummary`);
 az EKG CSV-k változatlanul tárolódnak (értelmezés nélkül); a GPX útvonalak nyilvántartásba
 kerülnek; az `export_cda.xml` figyelmen kívül marad.
 
-## Garmin export
+## Garmin export készítése
 
-Az M2 mérföldkőben készül el (Garmin Connect „Adatok exportálása" ZIP + FIT fájlok).
+**A) Garmin Connect adatexport (ajánlott, ez a teljes előzmény)**
+1. connect.garmin.com → Fiókbeállítások → **Adatkezelés → Adatok exportálása** → Kérelem.
+2. Az e-mailben kapott linkről töltsd le a ZIP-et.
+3. `uv run vitalmart import --person me <letöltött>.zip` – kicsomagolva (mappa) is megadható.
+
+Feldolgozott tartalom (`config/garmin_mapping.yaml`):
+
+| Fájl | Hová kerül |
+|---|---|
+| `DI-Connect-Aggregator/UDSFile_*.json` | `fact_daily_summary` (a Garmin napi összesítője az elsődleges), stressz-bontás, Body Battery, légzés, hidratáció → `fact_measurement` |
+| `DI-Connect-Wellness/*_sleepData.json` | `fact_sleep_session` (fázis-összegek, alvás-pontszám, SpO₂, légzés, alvás közbeni stressz) |
+| `DI-Connect-Fitness/*_summarizedActivities.json` | `fact_activity`, `fact_activity_hr_zone` |
+| `DI-Connect-Metrics/MetricsMaxMetData_*.json` | `fact_vo2max` |
+| `DI-Connect-Wellness/*_userBioMetrics.json` | `fact_body_measure` (súly), magasság |
+| `DI-Connect-Uploaded-Files/UploadedFiles_*.zip` | a benne lévő FIT-aktivitások (perc/másodperc-pulzus); a JSON-ban is meglévő edzés nem duplikálódik |
+| többi JSON az egészség-mappákban | nyers tárolás; a dátumos, numerikus mezők automatikus `garmin_<fájl>_<mező>` metrikaként |
+| `DI-Connect-User/…` (profil, e-mail, fotó) és egyéb mappák | **nem olvassa be**, csak nyilvántartja |
+
+Egységek az exportban (a leképezés átváltja): időtartam ms, távolság cm, sebesség cm/ms,
+`calories` **kJ**, szintemelkedés cm, zónaidő ms, testsúly g, magasság cm.
+
+**B) FIT-fájlok közvetlenül az óráról (USB)**: a `GARMIN/Activity` és `GARMIN/Monitor`
+mappát (vagy egyetlen `.fit` fájlt) add meg. A Monitor-fájlokból percenkénti pulzus
+(`fact_heart_rate_sample`) és stressz (`fact_stress_sample`) lesz. A Connect-exportban
+ilyen napon belüli adat nincs.
+
+> A Venu Sq 2 nem mér HRV-t, ezért Garmin-adatból `fact_hrv_nightly` nem keletkezik
+> (a riport ezt „nincs adat" jelzéssel kezeli, SPEC 4.1 megjegyzés).
+
+**Séma-változás esetén** (a Garmin időnként átnevez mezőket): futtasd a
+`uv run vitalmart schema <export>` parancsot – csak mezőneveket és típusokat ír ki, értékeket
+nem –, és a `config/garmin_mapping.yaml`-ban igazítsd az útvonalakat. Kód módosítása nem kell.
+
+## Több személy (háztartás)
+
+Minden import egy személyhez tartozik (`--person`, alapértelmezés: `config/app.yaml`
+→ `default_person`). A személy a forráseszközön keresztül kapcsolódik a tényadatokhoz
+(`dim_source.person_key`). Egy eszköz csak egy személyé lehet: ha ugyanaz az óra másik
+személy alatt érkezik, az import hibával leáll és visszagörget. A megjelenítendő név
+(`vitalmart persons --set-name partner "…"`) csak a helyi adatbázisban tárolódik.
 
 ## Architektúra röviden
 
@@ -101,6 +149,8 @@ export.zip ──(lxml iterparse, streaming)──► stg_apple_*      (nyers é
   esetén az „aznap éjjel" konvenció (a kezdés − 12 óra dátuma). Az alvási szakaszok
   forrásonként, 90 percnél rövidebb szünetekkel fűződnek össze (`sleep.session_gap_minutes`).
 - **HRV:** Apple → `SDNN`, a `hrv_method` oszlop kötelező; RMSSD-vel nem keveredik.
+- **Garmin forráskulcs:** `garmin:<deviceId>`; a Connect `deviceId` az óra egységazonosítója,
+  ami a FIT `serial_number` mezőjével egyezik, így a JSON és a FIT adat ugyanahhoz a forráshoz kerül.
 - **Adatminőség:** az érvényességi tartományon kívüli értékek (`config/metrics.yaml`:
   `valid_min`/`valid_max`, pl. pulzus 25–230, SpO₂ ≥ 70 %) `quality_flag = 'out_of_range'`
   jelölést kapnak, nem törlődnek; a napi összesítő kizárja őket.
@@ -119,7 +169,7 @@ export.zip ──(lxml iterparse, streaming)──► stg_apple_*      (nyers é
 A DuckDB memóriakorlátja `config/app.yaml` → `database.memory_limit` (alapérték 2 GB);
 e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd lejjebb.
 
-## Ismert korlátok (M1)
+## Ismert korlátok (M1–M2)
 
 - A core réteg minden importnál **teljesen** újraépül (gyors, de nem inkrementális – SPEC 10.3 SHOULD, M9).
 - Az Apple napi összesítő (`fact_daily_summary`) forrásonként külön sor (óra és iPhone
@@ -131,6 +181,11 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - Sérült (nem jól formált) `export.xml` esetén az import leáll és visszagörget
   (nincs „helyreállító" parse-olás, hogy csendben ne vesszen el adat).
 - Intervallum-mennyiségek (pl. lépés) a kezdő időpont helyi napjához számítanak.
+- Garmin: a Connect-export alvásadata csak fázis-összegeket tartalmaz (hipnogram-intervallum
+  nincs); a napon belüli pulzus/stressz csak az óráról másolt FIT Monitor-fájlokból jön.
+- Garmin: a testsúly a Connect-beállításból (`USER_SETTING`) is származhat, nem csak mérlegből.
+- A Garmin-tevékenységtípusok egységesítése (`activity_types` a YAML-ban) a te edzéseidhez
+  igazítható; pl. az `indoor_cardio` jelenleg „egyéb / aerob".
 
 ## Hibaelhárítás
 

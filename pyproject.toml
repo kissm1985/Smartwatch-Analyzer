@@ -5,7 +5,8 @@ description = "Személyes okosóra-adatpiac és egészségügyi elemző alkalmaz
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "duckdb>=1.1",
+    "duckdb>=1.3",
+    "fitdecode>=0.10",
     "lxml>=5.2",
     "pyarrow>=16",
     "pydantic>=2.7",
@@ -51,3 +52,5 @@ ignore_missing_imports = true
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E501"]
+# synthetic data generators: long literal records mirroring the real export layout
+"src/vitalmart/sample_data_garmin.py" = ["E501"]

@@ -19,7 +19,8 @@ STATUS_TABLES = [
     "dim_source", "dim_metric", "dim_activity_type", "fact_measurement",
     "fact_heart_rate_sample", "fact_sleep_session", "fact_sleep_stage_interval",
     "fact_hrv_nightly", "fact_activity", "fact_body_measure", "fact_vo2max",
-    "fact_daily_summary",
+    "fact_daily_summary", "stg_garmin_record", "stg_garmin_fit_file", "stg_garmin_fit_message",
+    "fact_stress_sample", "fact_activity_hr_zone", "dim_person",
 ]
 
 
@@ -65,7 +66,7 @@ def cmd_import(cfg: AppConfig, args: argparse.Namespace) -> int:
     try:
         res = service.run_import(
             con, cfg, path, force=args.force, adapter_name=args.source,
-            progress=None if args.quiet else _progress,
+            progress=None if args.quiet else _progress, person=args.person,
         )
     finally:
         con.close()
@@ -110,6 +111,33 @@ def cmd_wipe(cfg: AppConfig, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_persons(cfg: AppConfig, args: argparse.Namespace) -> int:
+    con = db.connect(cfg)
+    if args.set_name:
+        key, name = args.set_name
+        con.execute("INSERT INTO dim_person (person_key, display_name) VALUES (?, ?) "
+                    "ON CONFLICT (person_key) DO UPDATE SET display_name = excluded.display_name",
+                    [key, name])
+    rows = con.execute("""
+        SELECT p.person_key, coalesce(p.display_name, ''), s.source_key, s.vendor,
+               s.first_date, s.last_date
+        FROM dim_person p LEFT JOIN dim_source s ON s.person_key = p.person_key
+        ORDER BY 1, 3""").fetchall()
+    con.close()
+    for key, name, src, vendor, d0, d1 in rows:
+        print(t("persons.row", person=key, name=name, source=src or "–", vendor=vendor or "",
+                date_from=d0 or "", date_to=d1 or ""))
+    return 0
+
+
+def cmd_schema(cfg: AppConfig, args: argparse.Namespace) -> int:
+    from vitalmart.importers.schema import describe
+
+    for line in describe(Path(args.path).expanduser()):
+        print(line)
+    return 0
+
+
 def cmd_report(cfg: AppConfig, args: argparse.Namespace) -> int:
     print(t("report.not_implemented"))
     return 2
@@ -127,7 +155,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     imp = sub.add_parser("import", help="export betöltése (ZIP, mappa vagy export.xml)")
     imp.add_argument("path")
-    imp.add_argument("--source", choices=["apple_health"], help="forrás kézi megadása")
+    imp.add_argument("--source", choices=["apple_health", "garmin"],
+                     help="forrás kézi megadása")
+    imp.add_argument("--person", help="kinek az adata (személykód, pl. me, partner); "
+                                      "alapértelmezés: config default_person")
     imp.add_argument("--force", action="store_true", help="azonos fájl újratöltése")
     imp.add_argument("--preview", action="store_true", help="csak előnézet, betöltés nélkül")
     imp.add_argument("-q", "--quiet", action="store_true", help="nincs haladásjelző")
@@ -141,6 +172,15 @@ def build_parser() -> argparse.ArgumentParser:
     wipe = sub.add_parser("wipe", help="MINDEN adat törlése")
     wipe.add_argument("--yes", action="store_true", help="megerősítés")
     wipe.set_defaults(func=cmd_wipe)
+
+    per = sub.add_parser("persons", help="személyek és eszközeik")
+    per.add_argument("--set-name", nargs=2, metavar=("KOD", "NEV"),
+                     help="megjelenítendő név beállítása (csak helyben tárolódik)")
+    per.set_defaults(func=cmd_persons)
+
+    sch = sub.add_parser("schema", help="export szerkezete (mezőnevek, típusok) ÉRTÉKEK NÉLKÜL")
+    sch.add_argument("path")
+    sch.set_defaults(func=cmd_schema)
 
     rep = sub.add_parser("report", help="egészségügyi riport (M6)")
     rep.add_argument("--from", dest="date_from")

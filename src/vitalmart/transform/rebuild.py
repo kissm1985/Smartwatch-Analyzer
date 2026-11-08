@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import duckdb
@@ -26,7 +27,8 @@ from vitalmart.timeutil import offset_transitions
 
 log = logging.getLogger(__name__)
 
-VENDOR_DIRS = ("apple",)
+# (directory, optional Python pre-step) in execution order
+STEPS: tuple[str, ...] = ("_pre", "apple", "garmin", "common")
 
 
 def load_mappings(con: duckdb.DuckDBPyConnection, cfg: AppConfig) -> None:
@@ -91,10 +93,17 @@ def _set_variables(con: duckdb.DuckDBPyConnection, cfg: AppConfig) -> None:
 
 def transform_files(directory: Path = TRANSFORM_DIR) -> list[Path]:
     files: list[Path] = []
-    for vendor in VENDOR_DIRS:
-        files += sorted((directory / vendor).glob("*.sql"))
-    files += sorted((directory / "common").glob("*.sql"))
+    for step in STEPS:
+        files += sorted((directory / step).glob("*.sql"))
     return files
+
+
+def _pre_step(step: str) -> Callable[[duckdb.DuckDBPyConnection, AppConfig], None] | None:
+    if step == "garmin":
+        from vitalmart.transform import garmin
+
+        return garmin.prepare
+    return None
 
 
 def rebuild_core(con: duckdb.DuckDBPyConnection, cfg: AppConfig) -> float:
@@ -102,9 +111,13 @@ def rebuild_core(con: duckdb.DuckDBPyConnection, cfg: AppConfig) -> float:
     t0 = time.perf_counter()
     load_mappings(con, cfg)
     _set_variables(con, cfg)
-    for path in transform_files():
-        log.debug("transform %s", path.name)
-        con.execute(path.read_text(encoding="utf-8"))
+    for step in STEPS:
+        pre = _pre_step(step)
+        if pre is not None:
+            pre(con, cfg)
+        for path in sorted((TRANSFORM_DIR / step).glob("*.sql")):
+            log.debug("transform %s/%s", step, path.name)
+            con.execute(path.read_text(encoding="utf-8"))
     elapsed = time.perf_counter() - t0
     log.info("core rebuild finished in %.2fs", elapsed)
     return elapsed

@@ -157,5 +157,5 @@ def ensure_static_dims(con: duckdb.DuckDBPyConnection, cfg: AppConfig | None = N
         insert_rows(con, "dim_sleep_stage",
                     ["stage_key", "name_hu", "name_en", "is_asleep", "sort_order", "note"],
                     SLEEP_STAGES)
-    if fetch_scalar(con, "SELECT count(*) FROM dim_hr_zone") == 0:
+    if fetch_scalar(con, "SELECT count(*) FROM dim_hr_zone WHERE zone BETWEEN 1 AND 5") == 0:
         insert_rows(con, "dim_hr_zone", ["zone", "name_hu", "lower_pct", "upper_pct"], HR_ZONES)

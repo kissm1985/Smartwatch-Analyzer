@@ -14,4 +14,7 @@
 - Telepítés: `uv sync`; tesztek: `uv run pytest`; lint: `uv run ruff check`.
 - Rétegek: `stg_*` (nyers, csak hozzáfűzés, row_hash szerint deduplikálva) → `sql/transform/*.sql` (core újraépítés) → `dim_*`/`fact_*`.
 - Konfiguráció (`config/*.yaml`) a rebuild elején `map_*` táblákba töltődik; a transzformációk tiszta SQL-ek.
-- Mintaadat: `uv run python tools/make_sample_data.py --out data/sample` (szintetikus, determinisztikus).
+- Mintaadat: `uv run python tools/make_sample_data.py --out data/sample [--garmin]` (szintetikus, determinisztikus).
+- Garmin: a mezőleképezés KIZÁRÓLAG `config/garmin_mapping.yaml`-ban; a `transform/garmin.py` ebből generál SQL-t.
+- Személy (háztartás): `dim_person`, `dim_import_batch.person_key`, `dim_source.person_key`; a tényeket a forráson át szűrjük.
+- Valódi export szerkezetét csak `vitalmart schema` kimenetként (értékek nélkül) nézd; azonosítót, értéket ne írj a repóba.

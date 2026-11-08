@@ -5,6 +5,9 @@ data_dir: data
 db_file: vitalmart.duckdb
 timezone: Europe/Budapest
 language: hu
+# Személy, akihez az import alapértelmezésben tartozik (import --person felülírja).
+# Több személy (pl. pár) adatai külön kezelhetők; egy eszköz csak egy személyé lehet.
+default_person: me
 
 sleep:
   # Alvásnap-konvenció: "wake" = az ébredés napja (alapértelmezett, SPEC 4.4),

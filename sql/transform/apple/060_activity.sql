@@ -4,12 +4,7 @@ INSERT INTO dim_activity_type
 SELECT DISTINCT
     'apple:' || w.activity_type, 'Apple', w.activity_type,
     coalesce(m.unified_type, 'other'),
-    CASE coalesce(m.unified_type, 'other')
-        WHEN 'running' THEN 'Futás' WHEN 'walking' THEN 'Gyaloglás'
-        WHEN 'cycling' THEN 'Kerékpározás' WHEN 'swimming' THEN 'Úszás'
-        WHEN 'strength' THEN 'Erősítés' WHEN 'hiit' THEN 'HIIT'
-        WHEN 'hiking' THEN 'Túrázás' WHEN 'yoga' THEN 'Jóga / mobilitás'
-        ELSE 'Egyéb' END,
+    unified_name_hu(coalesce(m.unified_type, 'other')),
     m.category
 FROM stg_apple_workout w
 LEFT JOIN map_apple_workout_type m ON m.hk_type = w.activity_type;
