@@ -19,3 +19,4 @@
 - Személy (háztartás): `dim_person`, `dim_import_batch.person_key`, `dim_source.person_key`; a tényeket a forráson át szűrjük.
 - Valódi export szerkezetét csak `vitalmart schema` kimenetként (értékek nélkül) nézd; azonosítót, értéket ne írj a repóba.
 - Származtatott réteg: `sql/transform/derived/*.sql` (paraméterek: `config/app.yaml` → `derived`, `quality`); numerikus változtatásnál a `tests/test_derived.py` pandas/scipy referenciatesztjeit is futtasd.
+- Elemző: mérőszám/dimenzió csak `config/semantic.yaml`-ban; felhasználói érték mindig SQL-paraméter. Új kifejezésnél a `tests/test_semantic.py::test_every_measure_and_dimension_compiles` ellenőrzi. Streamlit-oldalak: `app/views/` (nem `pages/`, hogy ne induljon a régi automatikus navigáció).

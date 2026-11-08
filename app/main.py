@@ -15,12 +15,12 @@ get_cfg()
 guard_localhost()
 
 pages = [
-    st.Page("pages/1_Attekintes.py", title=t("ui.nav.overview"), icon="🏠", default=True),
-    st.Page("pages/2_Import.py", title=t("ui.nav.import"), icon="📥"),
-    st.Page("pages/3_Riport.py", title=t("ui.nav.report"), icon="📄"),
-    st.Page("pages/4_Elemzo.py", title=t("ui.nav.explorer"), icon="📊"),
-    st.Page("pages/5_Adatminoseg.py", title=t("ui.nav.quality"), icon="🧪"),
-    st.Page("pages/6_Export.py", title=t("ui.nav.export"), icon="💾"),
-    st.Page("pages/7_Beallitasok.py", title=t("ui.nav.settings"), icon="⚙️"),
+    st.Page("views/1_Attekintes.py", title=t("ui.nav.overview"), icon="🏠", default=True),
+    st.Page("views/2_Import.py", title=t("ui.nav.import"), icon="📥"),
+    st.Page("views/3_Riport.py", title=t("ui.nav.report"), icon="📄"),
+    st.Page("views/4_Elemzo.py", title=t("ui.nav.explorer"), icon="📊"),
+    st.Page("views/5_Adatminoseg.py", title=t("ui.nav.quality"), icon="🧪"),
+    st.Page("views/6_Export.py", title=t("ui.nav.export"), icon="💾"),
+    st.Page("views/7_Beallitasok.py", title=t("ui.nav.settings"), icon="⚙️"),
 ]
 st.navigation(pages).run()

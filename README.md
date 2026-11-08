@@ -19,8 +19,9 @@ külön kezelhetők (személy = elemzési dimenzió, nem felhasználói fiók). 
 | M2 – Garmin JSON + FIT import, mezőleképezés YAML-ból, ismeretlen mezők megőrzése | ✅ kész |
 | M3 – származtatott mutatók, adatminőség (pandas/scipy referenciával ellenőrizve) | ✅ kész |
 | M4 – Streamlit felület (Import, Áttekintés, Adatminőség, Beállítások) | ✅ kész |
-| M5 – szemantikus réteg + Explorer | ⏳ következik |
-| M6–M9 | ⏳ |
+| M5 – szemantikus réteg + Elemző (Explorer) | ✅ kész |
+| M6 – riportmotor (HTML) | ⏳ következik |
+| M7–M9 | ⏳ |
 
 ## Telepítés
 
@@ -50,13 +51,42 @@ menüben váltható.
 | Import | feltöltés vagy helyi útvonal, személy, automatikus/kézi forrásfelismerés, **előnézet** (fájlok, rekordtípusok, dátumtartomány, figyelmeztetések) → megerősítés → haladásjelző → **összefoglaló**; importnapló |
 | Adatminőség | lefedettség (havi hőtérkép), hézagok, megjelölt értékek, nem viselés, forrásváltások |
 | Beállítások | időzóna, nyelv, alvásnap-konvenció, alvási cél, alapvonal; személyek neve és profilja (érvényességi időszakokkal, pulzuszónák); elsődleges forrás metrikánként; riportküszöbök; mentés, újraszámolás, **teljes törlés** (megerősítéssel) |
-| Riport / Elemző / Export | az M5–M7 mérföldkövekben |
+| Elemző | lásd lent |
+| Riport / Export | az M6–M7 mérföldkövekben |
 
 A Beállításokban tett módosítások a `data/settings.yaml`-ba kerülnek (gitignore-olt), a
 `config/*.yaml` alapértékeit nem írják felül. A feltöltött fájl a betöltés után törlődik.
 
 > Amíg a felület fut, a parancssori `vitalmart import` nem éri el az adatbázist (DuckDB-zár) –
 > importálj a felületről, vagy előbb zárd be.
+
+## Elemző (Explorer, M5)
+
+Szabad SQL nélkül, egy **szemantikus rétegből** (`config/semantic.yaml`) választasz:
+
+- **téma** (10): napi mutatók (elsődleges forrás), alvás, edzések, HRV (módszerenként – SDNN és RMSSD
+  sosem keveredik, a módszert csoportosítani vagy egy értékre szűrni kötelező), napon belüli pulzus,
+  napon belüli stressz, heti WHO-aktivitás, edzésterhelés/ACWR, személyes alapvonal és z-pont, testösszetétel;
+- **1–4 mérőszám** aggregációval (összeg, átlag, medián, min., max., szórás, percentilisek, darab, nyers);
+- **0–3 dimenzió** (dátum: év → negyedév → hónap → hét → nap, a hét napja, hétvége, munkanap, évszak;
+  személy, forrás, gyártó; napszak, óra; edzéstípus; pulzus-kontextus; stressz-kategória; HRV-módszer);
+- **szűrők**: időszak (utolsó 7/30/90/180/365 nap – az utolsó adatnaphoz viszonyítva –, teljes, egyéni),
+  személyek, dimenzióértékek (be/ki), érték-tartomány, „csak rendben lévő adat”;
+- **időfelbontás**: napi/heti/havi/negyedéves/éves, napon belüli témáknál óránkénti és nyers;
+- **átalakítás** sorozatonként: mozgóátlag, kumulatív összeg, változás (abs./%), index (=100), z-pont, 0–1 normálás;
+- **grafikon**: vonal, oszlop (csoportosított/halmozott), terület, szóródás (illesztett egyenessel), buborék,
+  hisztogram, boxplot, hegedű, hőtérkép, naptár-hőtérkép, korrelációs mátrix (Spearman/Pearson, n-nel),
+  radar, idővonal; **második tengely**, **kisebb panelek** dimenzió szerint;
+- **táblázat** (rendezhető, oszlopválasztóval) és a **generált SQL** (csak olvasható; a felhasználói
+  értékek mindig paraméterként mennek, azonosító csak a YAML-ból kerülhet bele).
+
+Napon belüli adat vonaldiagramon legfeljebb 20 000 pont (LTTB-ritkítás). Mérve: 5 év napi adat
+csoportosított lekérdezése < 1 s, 1 év percenkénti pulzus óra × hét napja hőtérképe < 3 s.
+
+**Mentett elemzések**: 17 beépített (🔒, `config/saved_analyses.yaml`) – megnyitás, duplikálás; saját
+elemzés mentése névvel, leírással, címkékkel, felülírás, törlés; definíció letöltése/betöltése JSON-ként.
+Ha egy elemzés nem bontja személyek szerint, a kiválasztott személyre szűkítve fut (különben két ember
+napi adatai összekeverednének).
 
 ## Első lépések
 
@@ -229,7 +259,7 @@ elsődleges forrás váltása (legalább `quality.switch_min_days` napig tartó 
 A DuckDB memóriakorlátja `config/app.yaml` → `database.memory_limit` (alapérték 2 GB);
 e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd lejjebb.
 
-## Ismert korlátok (M1–M4)
+## Ismert korlátok (M1–M5)
 
 - A core réteg minden importnál **teljesen** újraépül (gyors, de nem inkrementális – SPEC 10.3 SHOULD, M9).
 - Az Apple napi összesítő (`fact_daily_summary`) forrásonként külön sor (óra és iPhone
@@ -253,6 +283,10 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - Garmin: a testsúly a Connect-beállításból (`USER_SETTING`) is származhat, nem csak mérlegből.
 - A Streamlit számbeviteli mezői tizedespontot mutatnak (a böngésző-komponens korlátja);
   minden kijelzett szám, dátum és idő magyar formátumú (tizedesvessző, ÉÉÉÉ.HH.NN., 24 órás).
+- Az Elemző mozgóátlaga a megjelenített időszakok (pl. hetek) számán dolgozik, nem naptári napokon;
+  a naptári ablakos mutatók a „Személyes alapvonal és z-pont” témában vannak.
+- Események/annotációk, lag-korreláció, két időszak összehasonlítása, saját nézetek (műszerfal),
+  SQL-konzol: M8.
 - Egyszerre egy folyamat írhatja az adatbázist (felület VAGY parancssor).
 - Csak FIT Monitor-fájlokból (Connect-export nélkül) még nem képződik napi összesítő, így
   származtatott napi mutató sem; a pulzus- és stresszminták és az adatminőségi jelek megvannak.

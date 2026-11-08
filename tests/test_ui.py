@@ -29,7 +29,7 @@ def data_dir(tmp_path, monkeypatch) -> Path:
 
 
 def page(name: str) -> AppTest:
-    return AppTest.from_file(str(APP / "pages" / name), default_timeout=T)
+    return AppTest.from_file(str(APP / "views" / name), default_timeout=T)
 
 
 def _texts(at: AppTest) -> str:

@@ -1,0 +1,272 @@
+# Szemantikus réteg az Elemzőhöz (SPEC 8.1).
+# A felhasználó mérőszámokat és dimenziókat választ; az SQL-t a rendszer generálja.
+# KIZÁRÓLAG az itt felsorolt SQL-kifejezések kerülhetnek a lekérdezésbe; a felhasználói
+# értékek (dátum, szűrőértékek, tartományok) mindig paraméterként mennek.
+#
+# topic.table        a ténytábla (alias: f)
+# topic.date_expr    DATE kifejezés (időszak-szűrés, időfelbontás)
+# topic.ts_expr      opcionális időbélyeg (percszintű "nyers" idősorhoz)
+# topic.person_expr  személy kifejezés (közvetlen oszlop vagy a forráson át)
+# topic.joins        a topic által engedett join-ok (név -> ON feltétel); csak akkor kerül be,
+#                    ha egy kiválasztott dimenzió/szűrő/mérőszám igényli
+# measure.where      (hosszú/EAV táblánál) melyik sorokra vonatkozik a mérőszám
+# measure.agg        alapértelmezett aggregáció; measure.aggs: engedélyezett aggregációk
+
+joins:
+  date:          "dim_date dd ON dd.date_key = {date_key}"
+  source:        "dim_source ds ON ds.source_key = f.source_key"
+  time_of_day:   "dim_time_of_day td ON td.minute_of_day = {minute}"
+  activity_type: "dim_activity_type aty ON aty.activity_type_key = f.activity_type_key"
+  metric:        "dim_metric dm ON dm.metric_key = f.metric_key"
+
+dimensions:
+  date.year:          {label_hu: Év, expr: "dd.year", join: date}
+  date.quarter:       {label_hu: Negyedév, expr: "dd.year || '. ' || dd.quarter || '. n.év'", order: "dd.year * 10 + dd.quarter", join: date}
+  date.month:         {label_hu: Hónap, expr: "dd.month_name_hu", order: "dd.month", join: date}
+  date.iso_week:      {label_hu: ISO-hét, expr: "dd.iso_week", join: date}
+  date.day_of_week:   {label_hu: A hét napja, expr: "dd.day_name_hu", order: "dd.day_of_week", join: date}
+  date.weekend:       {label_hu: Hétköznap / hétvége, expr: "CASE WHEN dd.is_weekend THEN 'hétvége' ELSE 'hétköznap' END", join: date}
+  date.workday:       {label_hu: Munkanap / szabadnap, expr: "CASE WHEN dd.is_workday_hu THEN 'munkanap' ELSE 'szabadnap' END", join: date}
+  date.season:        {label_hu: Évszak, expr: "dd.season_hu", order: "CASE dd.season WHEN 'winter' THEN 1 WHEN 'spring' THEN 2 WHEN 'summer' THEN 3 ELSE 4 END", join: date}
+  person:             {label_hu: Személy, expr: "{person}"}
+  source.source:      {label_hu: Forrás, expr: "ds.source_name", join: source}
+  source.vendor:      {label_hu: Gyártó, expr: "ds.vendor", join: source}
+  source.device_type: {label_hu: Eszköztípus, expr: "ds.device_type", join: source}
+  time.hour:          {label_hu: Óra, expr: "td.hour", join: time_of_day}
+  time.part_of_day:   {label_hu: Napszak, expr: "td.part_of_day_hu", order: "td.hour", join: time_of_day}
+  activity.type:      {label_hu: Edzéstípus, expr: "aty.unified_name_hu", join: activity_type}
+  activity.category:  {label_hu: Edzéskategória, expr: "aty.category", join: activity_type}
+  activity.original:  {label_hu: Eredeti típusnév, expr: "aty.original_name", join: activity_type}
+  hr.context:         {label_hu: Pulzus-kontextus, expr: "f.context"}
+  stress.category:    {label_hu: Stressz-kategória, expr: "f.category"}
+  hrv.method:         {label_hu: HRV-módszer, expr: "f.hrv_method"}
+  metric.name:        {label_hu: Metrika, expr: "f.metric_key"}
+
+# dátum-hierarchia (lefúrás az időfelbontással): év → negyedév → hónap → hét → nap
+hierarchies:
+  date: [year, quarter, month, week, day]
+
+aggregations:
+  sum:    {label_hu: összeg}
+  avg:    {label_hu: átlag}
+  median: {label_hu: medián}
+  min:    {label_hu: minimum}
+  max:    {label_hu: maximum}
+  std:    {label_hu: szórás}
+  p10:    {label_hu: 10. percentilis}
+  p25:    {label_hu: 25. percentilis}
+  p75:    {label_hu: 75. percentilis}
+  p90:    {label_hu: 90. percentilis}
+  count:  {label_hu: darabszám}
+  none:   {label_hu: nyers értékek (nincs aggregálás)}
+
+topics:
+  # ------------------------------------------------------------------ napi mutatók
+  daily:
+    label_hu: Napi mutatók (elsődleges forrás)
+    table: derived_person_daily
+    long: true
+    date_expr: f.date
+    date_key: f.date_key
+    person_expr: f.person_key
+    joins: [date, source]
+    dimensions: [date.*, person, source.*]
+    measures:
+      steps:            {label_hu: Lépésszám, unit: lépés, expr: f.value, where: "f.metric_key = 'steps'", agg: avg}
+      distance_km:      {label_hu: Távolság, unit: km, expr: f.value, where: "f.metric_key = 'distance_km'", agg: avg}
+      active_kcal:      {label_hu: Aktív energia, unit: kcal, expr: f.value, where: "f.metric_key = 'active_kcal'", agg: avg}
+      resting_hr:       {label_hu: Nyugalmi pulzus, unit: bpm, expr: f.value, where: "f.metric_key = 'resting_hr'", agg: avg}
+      hr_avg:           {label_hu: Napi átlagpulzus, unit: bpm, expr: f.value, where: "f.metric_key = 'hr_avg'", agg: avg}
+      stress_avg:       {label_hu: Átlagos stressz (Garmin), unit: pont, expr: f.value, where: "f.metric_key = 'stress_avg'", agg: avg}
+      body_battery_max: {label_hu: Body Battery maximum, unit: pont, expr: f.value, where: "f.metric_key = 'body_battery_max'", agg: avg}
+      body_battery_min: {label_hu: Body Battery minimum, unit: pont, expr: f.value, where: "f.metric_key = 'body_battery_min'", agg: avg}
+      spo2_avg:         {label_hu: SpO₂ átlag, unit: "%", expr: f.value, where: "f.metric_key = 'spo2_avg'", agg: avg}
+      respiratory_rate: {label_hu: Légzésszám, unit: /perc, expr: f.value, where: "f.metric_key = 'respiratory_rate_avg'", agg: avg}
+      who_equiv_min:    {label_hu: WHO-egyenértékes aktív perc, unit: perc, expr: f.value, where: "f.metric_key = 'who_equiv_min'", agg: sum}
+      moderate_min:     {label_hu: Mérsékelt perc, unit: perc, expr: f.value, where: "f.metric_key = 'moderate_min'", agg: sum}
+      vigorous_min:     {label_hu: Intenzív perc, unit: perc, expr: f.value, where: "f.metric_key = 'vigorous_min'", agg: sum}
+      sleep_hours:      {label_hu: Alvásidő, unit: óra, expr: f.value / 60.0, where: "f.metric_key = 'sleep_min'", agg: avg}
+      sleep_efficiency: {label_hu: Alvás hatékonysága, unit: "%", expr: f.value, where: "f.metric_key = 'sleep_efficiency'", agg: avg}
+      sleep_score:      {label_hu: Alvás-pontszám (Garmin), unit: pont, expr: f.value, where: "f.metric_key = 'sleep_score'", agg: avg}
+      bedtime_clock:    {label_hu: Lefekvés ideje, unit: óra (24h), expr: "(f.value / 60.0 + 12) % 24", where: "f.metric_key = 'bedtime_min'", agg: avg}
+      waketime_clock:   {label_hu: Ébredés ideje, unit: óra (24h), expr: f.value / 60.0, where: "f.metric_key = 'waketime_min'", agg: avg}
+      hrv_sdnn:         {label_hu: HRV (SDNN), unit: ms, expr: f.value, where: "f.metric_key = 'hrv_sdnn'", agg: avg}
+      hrv_rmssd:        {label_hu: HRV (RMSSD), unit: ms, expr: f.value, where: "f.metric_key = 'hrv_rmssd'", agg: avg}
+      vo2max:           {label_hu: VO₂max becslés, unit: mL/kg/perc, expr: f.value, where: "f.metric_key = 'vo2max'", agg: avg}
+      body_mass:        {label_hu: Testsúly, unit: kg, expr: f.value, where: "f.metric_key = 'body_mass'", agg: avg}
+
+  # ------------------------------------------------------------------ alvás
+  sleep:
+    label_hu: Alvás (éjszakánként)
+    table: fact_sleep_session
+    base_where: "f.is_main AND f.asleep_min > 0"
+    quality: true
+    date_expr: f.sleep_date
+    date_key: f.sleep_date_key
+    person_expr: ds.person_key
+    joins: [date, source]
+    dimensions: [date.*, person, source.*]
+    timeline: {start: f.start_local, end: f.end_local, label: "'alvás'"}
+    measures:
+      asleep_h:     {label_hu: Alvásidő, unit: óra, expr: f.asleep_min / 60.0, agg: avg}
+      in_bed_h:     {label_hu: Ágyban töltött idő, unit: óra, expr: f.in_bed_min / 60.0, agg: avg}
+      deep_min:     {label_hu: Mélyalvás, unit: perc, expr: f.deep_min, agg: avg}
+      light_min:    {label_hu: Könnyű / core alvás, unit: perc, expr: f.light_min, agg: avg}
+      rem_min:      {label_hu: REM-alvás, unit: perc, expr: f.rem_min, agg: avg}
+      awake_min:    {label_hu: Ébrenlét, unit: perc, expr: f.awake_min, agg: avg}
+      efficiency:   {label_hu: Hatékonyság, unit: "%", expr: f.efficiency_pct, agg: avg}
+      sleep_score:  {label_hu: Alvás-pontszám, unit: pont, expr: f.sleep_score, agg: avg}
+      hr_avg:       {label_hu: Átlagpulzus alvás közben, unit: bpm, expr: f.hr_avg, agg: avg}
+      hr_min:       {label_hu: Legalacsonyabb pulzus, unit: bpm, expr: f.hr_min, agg: avg}
+      resp:         {label_hu: Légzésszám, unit: /perc, expr: f.respiratory_rate_avg, agg: avg}
+      spo2:         {label_hu: SpO₂, unit: "%", expr: f.spo2_avg, agg: avg}
+      stress:       {label_hu: Stressz alvás közben, unit: pont, expr: f.stress_avg, agg: avg}
+      bedtime:      {label_hu: Lefekvés ideje, unit: óra (24h), expr: "hour(f.start_local) + minute(f.start_local) / 60.0", agg: avg}
+      waketime:     {label_hu: Ébredés ideje, unit: óra (24h), expr: "hour(f.end_local) + minute(f.end_local) / 60.0", agg: avg}
+      nights:       {label_hu: Éjszakák száma, unit: db, expr: "1", agg: count}
+
+  # ------------------------------------------------------------------ edzések
+  activity:
+    label_hu: Edzések
+    table: fact_activity
+    quality: true
+    date_expr: CAST(f.start_local AS DATE)
+    date_key: f.date_key
+    person_expr: ds.person_key
+    minute_expr: "hour(f.start_local) * 60 + minute(f.start_local)"
+    joins: [date, source, activity_type, time_of_day]
+    dimensions: [date.*, person, source.*, activity.*, time.*]
+    timeline: {start: f.start_local, end: f.end_local, label: aty.unified_name_hu, join: activity_type}
+    measures:
+      count:        {label_hu: Edzések száma, unit: db, expr: "1", agg: count}
+      duration_min: {label_hu: Időtartam, unit: perc, expr: f.duration_min, agg: sum}
+      distance_km:  {label_hu: Távolság, unit: km, expr: f.distance_km, agg: sum}
+      energy_kcal:  {label_hu: Energia, unit: kcal, expr: f.energy_kcal, agg: sum}
+      hr_avg:       {label_hu: Átlagpulzus, unit: bpm, expr: f.hr_avg, agg: avg}
+      hr_max:       {label_hu: Maximális pulzus, unit: bpm, expr: f.hr_max, agg: max}
+      speed:        {label_hu: Átlagsebesség, unit: km/h, expr: f.avg_speed_kmh, agg: avg}
+      pace:         {label_hu: Tempó, unit: perc/km, expr: f.pace_min_per_km, agg: avg}
+      elevation:    {label_hu: Szintemelkedés, unit: m, expr: f.elevation_gain_m, agg: sum}
+      aerobic_te:   {label_hu: Aerob edzéshatás, unit: pont, expr: f.aerobic_effect, agg: avg}
+      load:         {label_hu: Edzésterhelés (eszköz), unit: pont, expr: f.training_load, agg: sum}
+
+  # ------------------------------------------------------------------ HRV (módszerenként!)
+  hrv:
+    label_hu: HRV éjszakánként (módszerenként)
+    table: fact_hrv_nightly
+    quality: true
+    date_expr: f.sleep_date
+    date_key: f.sleep_date_key
+    person_expr: ds.person_key
+    joins: [date, source]
+    dimensions: [date.*, person, source.*, hrv.method]
+    required_dimensions: [hrv.method]      # SDNN és RMSSD sosem keveredhet
+    measures:
+      hrv:      {label_hu: Éjszakai HRV, unit: ms, expr: f.hrv_avg_ms, agg: avg}
+      hrv_7d:   {label_hu: HRV 7 napos átlag, unit: ms, expr: f.hrv_7d_avg_ms, agg: avg}
+      ln_hrv:   {label_hu: ln(HRV), unit: "", expr: ln(f.hrv_avg_ms), agg: avg}
+      samples:  {label_hu: Mintaszám, unit: db, expr: f.sample_count, agg: sum}
+
+  # ------------------------------------------------------------------ napon belüli pulzus
+  heart_rate:
+    label_hu: Pulzus – napon belüli
+    table: fact_heart_rate_sample
+    quality: true
+    intraday: true
+    date_expr: CAST(f.ts_local AS DATE)
+    date_key: f.date_key
+    ts_expr: f.ts_local
+    person_expr: ds.person_key
+    joins: [date, source, time_of_day]
+    dimensions: [date.*, person, source.*, time.*, hr.context]
+    measures:
+      bpm:      {label_hu: Pulzus, unit: bpm, expr: f.bpm, agg: avg}
+      samples:  {label_hu: Mintaszám, unit: db, expr: "1", agg: count}
+
+  # ------------------------------------------------------------------ napon belüli stressz (Garmin)
+  stress:
+    label_hu: Stressz – napon belüli (Garmin)
+    table: fact_stress_sample
+    quality: true
+    intraday: true
+    date_expr: CAST(f.ts_local AS DATE)
+    date_key: f.date_key
+    ts_expr: f.ts_local
+    person_expr: ds.person_key
+    joins: [date, source, time_of_day]
+    dimensions: [date.*, person, source.*, time.*, stress.category]
+    measures:
+      stress:   {label_hu: Stressz, unit: pont, expr: f.stress, agg: avg}
+      samples:  {label_hu: Mintaszám, unit: db, expr: "1", agg: count}
+
+  # ------------------------------------------------------------------ heti aktivitás (WHO)
+  weekly:
+    label_hu: Heti aktivitás (WHO)
+    table: derived_weekly_activity
+    date_expr: f.week_start
+    date_key: "CAST(strftime(f.week_start, '%Y%m%d') AS INTEGER)"
+    person_expr: f.person_key
+    joins: [date]
+    dimensions: [date.year, date.quarter, date.month, date.season, person]
+    measures:
+      who_equiv_min:  {label_hu: WHO-egyenértékes perc / hét, unit: perc, expr: f.who_equiv_min, agg: avg}
+      moderate_min:   {label_hu: Mérsékelt perc / hét, unit: perc, expr: f.moderate_min, agg: avg}
+      vigorous_min:   {label_hu: Intenzív perc / hét, unit: perc, expr: f.vigorous_min, agg: avg}
+      strength_days:  {label_hu: Erősítő napok / hét, unit: nap, expr: f.strength_days, agg: avg}
+      activity_count: {label_hu: Edzések / hét, unit: db, expr: f.activity_count, agg: avg}
+      rest_days:      {label_hu: Pihenőnapok / hét, unit: nap, expr: f.rest_days, agg: avg}
+      steps:          {label_hu: Heti lépésszám, unit: lépés, expr: f.steps, agg: avg}
+      load:           {label_hu: Heti terhelés, unit: pont, expr: f.total_load, agg: avg}
+
+  # ------------------------------------------------------------------ edzésterhelés (ACWR – közelítés)
+  load:
+    label_hu: Edzésterhelés és akut:krónikus arány (közelítés)
+    table: derived_training_load
+    date_expr: f.date
+    date_key: f.date_key
+    person_expr: f.person_key
+    joins: [date]
+    dimensions: [date.*, person]
+    measures:
+      load:      {label_hu: Napi terhelés, unit: pont, expr: f.load, agg: sum}
+      acute:     {label_hu: Akut terhelés (7 nap), unit: pont/nap, expr: f.acute, agg: avg}
+      chronic:   {label_hu: Krónikus terhelés (28 nap), unit: pont/nap, expr: f.chronic, agg: avg}
+      acwr:      {label_hu: Akut:krónikus arány, unit: arány, expr: "CASE WHEN f.acwr_valid THEN f.acwr END", agg: avg}
+      rest_days: {label_hu: Pihenőnapok, unit: nap, expr: "CASE WHEN f.is_rest_day THEN 1 ELSE 0 END", agg: sum}
+
+  # ------------------------------------------------------------------ alapvonal és z-pont
+  baseline:
+    label_hu: Személyes alapvonal és z-pont
+    table: derived_daily_stats
+    long: true
+    date_expr: f.date
+    date_key: f.date_key
+    person_expr: f.person_key
+    joins: [date]
+    dimensions: [date.*, person, metric.name]
+    required_filters: [metric.name]       # egyszerre egy (vagy néhány kiválasztott) metrika
+    measures:
+      value:     {label_hu: Napi érték, unit: "", expr: f.value, agg: avg}
+      ma7:       {label_hu: 7 napos mozgóátlag, unit: "", expr: f.ma7, agg: avg}
+      ma28:      {label_hu: 28 napos mozgóátlag, unit: "", expr: f.ma28, agg: avg}
+      bl_mean:   {label_hu: Alapvonal (átlag), unit: "", expr: f.bl_mean, agg: avg}
+      bl_low:    {label_hu: Alapvonal-sáv alja, unit: "", expr: f.bl_mean - 1.5 * f.bl_std, agg: avg}
+      bl_high:   {label_hu: Alapvonal-sáv teteje, unit: "", expr: f.bl_mean + 1.5 * f.bl_std, agg: avg}
+      z_score:   {label_hu: z-pont, unit: z, expr: f.z_score, agg: avg}
+      robust_z:  {label_hu: Robusztus z-pont, unit: z, expr: f.robust_z, agg: avg}
+      outside:   {label_hu: Sávon kívüli napok, unit: nap, expr: "CASE WHEN f.outside_band THEN 1 ELSE 0 END", agg: sum}
+
+  # ------------------------------------------------------------------ testösszetétel
+  body:
+    label_hu: Testösszetétel
+    table: fact_body_measure
+    quality: true
+    date_expr: CAST(f.ts_local AS DATE)
+    date_key: f.date_key
+    person_expr: ds.person_key
+    joins: [date, source]
+    dimensions: [date.*, person, source.*]
+    measures:
+      weight:   {label_hu: Testsúly, unit: kg, expr: f.body_mass_kg, agg: avg}
+      fat:      {label_hu: Testzsír, unit: "%", expr: f.body_fat_pct, agg: avg}
+      bmi:      {label_hu: BMI, unit: kg/m², expr: f.bmi, agg: avg}

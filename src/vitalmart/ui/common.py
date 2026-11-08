@@ -73,7 +73,7 @@ def empty_state() -> None:
     with st.expander(t("ui.empty.garmin_title"), expanded=True):
         st.markdown(t("ui.empty.garmin_steps"))
     with contextlib.suppress(Exception):  # page links need the multipage app (main.py)
-        st.page_link("pages/2_Import.py", label=t("ui.empty.goto_import"), icon="📥")
+        st.page_link("views/2_Import.py", label=t("ui.empty.goto_import"), icon="📥")
 
 
 def disclaimer() -> None:

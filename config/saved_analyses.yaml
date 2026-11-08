@@ -1,0 +1,71 @@
+# Beépített (előre definiált) elemzések az Elemzőhöz (SPEC 8.3, M5 elfogadás: >= 10).
+# Minden személyre futnak (persons: []), a felületen szűkíthetők, és saját néven menthetők.
+analyses:
+  steps_weekly:
+    name: Lépésszám – heti átlag személyenként
+    tags: [aktivitás, trend]
+    spec: {topic: daily, measures: [{key: steps}], dimensions: [person], time_grain: week, period: all, chart: line}
+  rhr_trend:
+    name: Nyugalmi pulzus – 7 napos mozgóátlag
+    tags: [szív, trend]
+    spec: {topic: daily, measures: [{key: resting_hr}], dimensions: [person], time_grain: day, period: all, transform: moving_avg, transform_window: 7, chart: line}
+  rhr_baseline_band:
+    name: Nyugalmi pulzus és a személyes alapvonal sávja
+    tags: [szív, alapvonal]
+    spec: {topic: baseline, measures: [{key: value}, {key: bl_low}, {key: bl_high}], dimensions: [person], filters: [{dimension: metric.name, values: [resting_hr]}], time_grain: day, period: all, chart: line}
+  sleep_by_weekday:
+    name: Alvásidő a hét napjai szerint
+    tags: [alvás]
+    spec: {topic: daily, measures: [{key: sleep_hours}], dimensions: [date.day_of_week, person], time_grain: none, period: all, chart: bar}
+  sleep_stages_monthly:
+    name: Alvásfázisok havonta
+    tags: [alvás]
+    spec: {topic: sleep, measures: [{key: deep_min}, {key: light_min}, {key: rem_min}, {key: awake_min}], time_grain: month, period: all, chart: bar_stacked}
+  sleep_timing:
+    name: Lefekvés és ébredés ideje (heti átlag)
+    tags: [alvás, szabályosság]
+    spec: {topic: sleep, measures: [{key: bedtime}, {key: waketime}], dimensions: [person], time_grain: week, period: all, chart: line}
+  sleep_vs_steps:
+    name: Alvásidő és lépésszám (szóródás)
+    tags: [alvás, aktivitás, összefüggés]
+    spec: {topic: daily, measures: [{key: steps}, {key: sleep_hours}], time_grain: day, period: all, chart: scatter}
+  daily_correlations:
+    name: Napi mutatók korrelációs mátrixa
+    tags: [összefüggés]
+    spec: {topic: daily, measures: [{key: steps}, {key: sleep_hours}, {key: resting_hr}, {key: active_kcal}], time_grain: day, period: all, chart: corr, corr_method: spearman}
+  steps_calendar:
+    name: Lépésszám naptár-hőtérkép
+    tags: [aktivitás]
+    spec: {topic: daily, measures: [{key: steps}], time_grain: day, period: all, chart: calendar}
+  activities_by_type:
+    name: Edzések típus szerint havonta
+    tags: [edzés]
+    spec: {topic: activity, measures: [{key: count}], dimensions: [activity.type], time_grain: month, period: all, chart: bar_stacked}
+  activity_timeline:
+    name: Edzések idővonala (utolsó 90 nap)
+    tags: [edzés]
+    spec: {topic: activity, measures: [{key: count}], time_grain: day, period: last_90, chart: timeline}
+  who_weekly:
+    name: Heti WHO-egyenértékes aktív percek
+    tags: [aktivitás, WHO]
+    spec: {topic: weekly, measures: [{key: who_equiv_min}], dimensions: [person], time_grain: week, period: all, chart: bar}
+  training_load:
+    name: Akut és krónikus terhelés, arányuk (közelítés)
+    tags: [edzés, terhelés]
+    spec: {topic: load, measures: [{key: acute}, {key: chronic}, {key: acwr}], time_grain: day, period: all, chart: line, secondary_measure: acwr}
+  hr_heatmap:
+    name: Pulzus – óra × a hét napja hőtérkép
+    tags: [szív, napon belül]
+    spec: {topic: heart_rate, measures: [{key: bpm}], dimensions: [time.hour, date.day_of_week], time_grain: none, period: all, chart: heatmap}
+  hrv_by_method:
+    name: Éjszakai HRV módszerenként (SDNN / RMSSD)
+    tags: [szív, HRV]
+    spec: {topic: hrv, measures: [{key: hrv}], dimensions: [hrv.method, person], time_grain: day, period: all, transform: moving_avg, transform_window: 7, chart: line}
+  stress_by_part_of_day:
+    name: Stressz eloszlása napszakonként (Garmin)
+    tags: [stressz, napon belül]
+    spec: {topic: stress, measures: [{key: stress, agg: none}], dimensions: [time.part_of_day], time_grain: none, period: all, chart: box}
+  weekday_weekend_profile:
+    name: Hétköznap vs. hétvége profil
+    tags: [összehasonlítás]
+    spec: {topic: daily, measures: [{key: steps}, {key: sleep_hours}, {key: resting_hr}, {key: active_kcal}], dimensions: [date.weekend], time_grain: none, period: all, chart: radar}

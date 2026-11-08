@@ -45,8 +45,10 @@ def connect(cfg: AppConfig, *, read_only: bool = False) -> duckdb.DuckDBPyConnec
     if not read_only:
         migrate(con)
         from vitalmart.datamart.seed import ensure_static_dims
+        from vitalmart.semantic.store import seed_builtins
 
         ensure_static_dims(con, cfg)
+        seed_builtins(con)
     return con
 
 
