@@ -838,3 +838,6 @@ sql:
     function: "Function not allowed: {fn}"
     timeout: "The query exceeded the time limit ({s} s) and was interrupted."
     exec: "Execution error: {msg}"
+diagnose:
+  running: "Self-check: the whole pipeline runs in a temporary data directory (your own database is not touched). This can take minutes for a large export."
+  saved: "Report saved: {path} – it contains no values, dates or device names and can be shared."

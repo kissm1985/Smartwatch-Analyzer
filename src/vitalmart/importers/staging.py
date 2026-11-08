@@ -45,9 +45,12 @@ def classify_insert(
     """)
     assert row is not None
     read, n_new_rows, updated, errors = (int(x) for x in row)
+    # two semi-joins instead of "ON a = b OR c = d": an OR join condition cannot use a hash
+    # join and degrades to a quadratic nested loop (minutes on a re-imported large export)
     matched = {int(r[0]) for r in con.execute(f"""
-        SELECT DISTINCT s.import_batch_id FROM {src} l
-        JOIN {target} s ON s.row_hash = l.row_hash OR s.nk_hash = l.nk_hash
+        SELECT import_batch_id FROM {target} WHERE row_hash IN (SELECT row_hash FROM {src})
+        UNION
+        SELECT import_batch_id FROM {target} WHERE nk_hash IN (SELECT nk_hash FROM {src})
     """).fetchall()}
     con.execute(
         f"INSERT INTO {target} SELECT {select_cols.format(batch=batch_id)} FROM _new"

@@ -231,6 +231,26 @@ def cmd_export(cfg: AppConfig, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_diagnose(cfg: AppConfig, args: argparse.Namespace) -> int:
+    from vitalmart import diagnose
+
+    path = Path(args.path).expanduser()
+    if not path.exists():
+        print(t("import.not_found", path=path), file=sys.stderr)
+        return 2
+    print(t("diagnose.running"), file=sys.stderr)
+    diag = diagnose.run(path, person=args.person or cfg.default_person, quick=args.quick,
+                        progress=lambda m: print(f"  … {m}", file=sys.stderr, flush=True))
+    md = diagnose.to_markdown(diag, path)
+    if args.out:
+        out = Path(args.out).expanduser()
+        out.write_text(md, encoding="utf-8")
+        print(t("diagnose.saved", path=out), file=sys.stderr)
+    else:
+        print(md)
+    return 0 if diag.ok else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="vitalmart", description="VitalMart – okosóra-adatpiac")
     p.add_argument("--version", action="version", version=f"vitalmart {__version__}")
@@ -300,6 +320,14 @@ def build_parser() -> argparse.ArgumentParser:
     exp.add_argument("--regenerate", metavar="EXPORT_ID",
                      help="korábbi export újrakészítése ugyanazokkal a paraméterekkel")
     exp.set_defaults(func=cmd_export)
+
+    dg = sub.add_parser("diagnose", help="önellenőrzés egy exporton ideiglenes adatmappában; "
+                                         "megosztható, értékek nélküli jelentés")
+    dg.add_argument("path")
+    dg.add_argument("--person", help="személykód (alapértelmezés: default_person)")
+    dg.add_argument("--out", help="a jelentés mentése Markdown-fájlba")
+    dg.add_argument("--quick", action="store_true", help="PDF és exportok kihagyása")
+    dg.set_defaults(func=cmd_diagnose)
     return p
 
 

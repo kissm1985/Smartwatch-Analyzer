@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from matplotlib import font_manager
+from matplotlib.collections import PolyCollection
 
 DPI = 200
 PALETTE = ["#2563eb", "#f59e0b", "#16a34a", "#dc2626", "#7c3aed", "#0891b2", "#db2777",
@@ -123,6 +124,32 @@ def _axes_for(fig: go.Figure, mfig: plt.Figure) -> dict[tuple[str, str], Any]:
     return out
 
 
+MANY_BARS = 200
+
+
+def _bars(ax: Any, horiz: bool, pos: np.ndarray, vals: Any, width: float,
+          bottom: np.ndarray | None, color: str, label: str | None) -> None:
+    """ax.bar / ax.barh; hundreds of bars are drawn as ONE PolyCollection (one patch per bar
+    makes long daily series take seconds)."""
+    if len(pos) <= MANY_BARS:
+        if horiz:
+            ax.barh(pos, vals, width, left=bottom, color=color, label=label)
+        else:
+            ax.bar(pos, vals, width, bottom, color=color, label=label)
+        return
+    v = np.nan_to_num(np.asarray(vals, dtype=float))
+    b = np.zeros(len(v)) if bottom is None else np.asarray(bottom, dtype=float)
+    p0, p1 = np.asarray(pos, dtype=float) - width / 2, np.asarray(pos, dtype=float) + width / 2
+    if horiz:
+        verts = [[(bb, a), (bb + vv, a), (bb + vv, c), (bb, c)]
+                 for a, c, vv, bb in zip(p0, p1, v, b, strict=True)]
+    else:
+        verts = [[(a, bb), (a, bb + vv), (c, bb + vv), (c, bb)]
+                 for a, c, vv, bb in zip(p0, p1, v, b, strict=True)]
+    ax.add_collection(PolyCollection(verts, facecolors=color, edgecolors="none", label=label))
+    ax.autoscale_view()
+
+
 def _draw_trace(ax: Any, tr: Any, i: int, state: dict[str, Any]) -> bool:
     name = getattr(tr, "name", None) or None
     color = _color(tr, i)
@@ -195,21 +222,21 @@ def _draw_trace(ax: Any, tr: Any, i: int, state: dict[str, Any]) -> bool:
             state["cat_x"].add(id(ax))
         if stacked:
             bottom = np.array([state["stack"][(key, p)] for p in pos])
-            (ax.barh if horiz else ax.bar)(pos, vals, width, bottom if not horiz else None,
-                                           color=color, label=name,
-                                           **({"left": bottom} if horiz else {}))
+            _bars(ax, horiz, pos, vals, width, bottom, color, name)
             for p, v in zip(pos, vals, strict=True):
                 state["stack"][(key, p)] += 0 if np.isnan(v) else v
         else:
             k = max(state["n_bar_traces"].get(key, 1), 1)
             off = (n_series - (k - 1) / 2) * width / k
-            (ax.barh if horiz else ax.bar)(pos + off, vals, width / k, color=color, label=name)
+            _bars(ax, horiz, pos + off, vals, width / k, None, color, name)
         if _is_dates(list(cats)):
             ax.xaxis_date()
         return True
     if typ == "histogram":
-        ax.hist(_y(tr.x if tr.x is not None else tr.y), bins=30, color=color, alpha=0.7,
-                label=name)
+        data = np.asarray(_y(tr.x if tr.x is not None else tr.y), dtype=float)
+        data = data[np.isfinite(data)]
+        if len(data):
+            ax.hist(data, bins=30, color=color, alpha=0.7, label=name)
         return True
     if typ in ("box", "violin"):
         groups: dict[str, list[float]] = defaultdict(list)

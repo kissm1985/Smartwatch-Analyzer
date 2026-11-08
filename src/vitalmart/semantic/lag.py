@@ -119,7 +119,9 @@ def lag_stat(x: pd.Series, y: pd.Series, lag: int, min_n: int = MIN_N) -> LagSta
 
 def lag_profile(x: pd.Series, y: pd.Series, lags: range, min_n: int = MIN_N) -> pd.DataFrame:
     rows = [lag_stat(x, y, k, min_n).__dict__ for k in lags]
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows, columns=list(LagStat.__dataclass_fields__))
+    # all-None columns would be object dtype (abs/plot fail) – keep them numeric
+    return df.astype({c: float for c in df.columns if c not in ("lag", "n")})
 
 
 def best_lag(profile: pd.DataFrame, method: str) -> int | None:

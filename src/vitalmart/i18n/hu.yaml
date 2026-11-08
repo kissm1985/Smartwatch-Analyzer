@@ -838,3 +838,6 @@ sql:
     function: "Nem engedélyezett függvény: {fn}"
     timeout: "A lekérdezés túllépte az időkorlátot ({s} s), ezért megszakadt."
     exec: "Futási hiba: {msg}"
+diagnose:
+  running: "Önellenőrzés: a teljes feldolgozás lefut egy ideiglenes adatmappában (a saját adatbázisodat nem érinti). Nagy exportnál ez több percig tarthat."
+  saved: "A jelentés mentve: {path} – értékeket, dátumokat és eszközneveket nem tartalmaz, megosztható."

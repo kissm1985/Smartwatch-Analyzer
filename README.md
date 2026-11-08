@@ -10,31 +10,40 @@ külön kezelhetők (személy = elemzési dimenzió, nem felhasználói fiók). 
 
 > Ez az alkalmazás nem orvosi eszköz, és nem diagnosztizál (SPEC 7.6).
 
-## Állapot
+Állapot: a SPEC 12. pontjának mind a tíz mérföldköve (M0–M9) elkészült; 201 automatikus teszt,
+96 %-os kódlefedettség, valós Apple-exporton végigtesztelve.
 
-| Mérföldkő | Állapot |
-|---|---|
-| M0 – projektváz, konfig, migrációk, szintetikus adat | ✅ kész |
-| M1 – Apple Health import, staging + core, dim_date/metric/source/activity_type | ✅ kész |
-| M2 – Garmin JSON + FIT import, mezőleképezés YAML-ból, ismeretlen mezők megőrzése | ✅ kész |
-| M3 – származtatott mutatók, adatminőség (pandas/scipy referenciával ellenőrizve) | ✅ kész |
-| M4 – Streamlit felület (Import, Áttekintés, Adatminőség, Beállítások) | ✅ kész |
-| M5 – szemantikus réteg + Elemző (Explorer) | ✅ kész |
-| M6 – riportmotor (szabálykatalógus, szekciók, ábrák) HTML-ben | ✅ kész |
-| M7 – PDF és XLSX/CSV/Parquet export, export-előzmények | ✅ kész |
-| M8 – események/annotációk, lag-korreláció, összehasonlító mód, saját nézetek, SQL-konzol | ✅ kész |
-| M9 – valós exporton tesztelés, teljesítményhangolás, dokumentáció | ⏳ következik |
+## Gyors kezdés
+
+```bash
+uv sync                                                     # 1) telepítés (egyszer)
+uv run vitalmart import --person me   <garmin-export>.zip   # 2) adatok betöltése
+uv run vitalmart import --person partner exportálás.zip
+uv run vitalmart ui                                         # 3) felület: http://127.0.0.1:8501
+```
+
+Valódi adat nélkül is kipróbálható szintetikus mintával (lásd [Első lépések](#első-lépések)).
 
 ## Telepítés
 
+Szükséges: **Python 3.12+** és az [uv](https://docs.astral.sh/uv/) csomagkezelő. Rendszerkönyvtár,
+böngésző-motor vagy külső szolgáltatás nem kell (a PDF is tisztán Pythonból készül).
+
+| Rendszer | uv telepítése |
+|---|---|
+| macOS / Linux | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| Windows (PowerShell) | `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
+
 ```bash
-# uv: https://docs.astral.sh/uv/
-uv sync
-uv run pytest            # tesztek
-uv run ruff check        # lint
+git clone <repo-url> vitalmart && cd vitalmart      # vagy a ZIP kicsomagolása
+uv sync                                              # függőségek a projekt .venv-jébe (Python is, ha kell)
+uv run vitalmart init                                # adatmappa + adatbázis (az első import is létrehozza)
 ```
 
-Python 3.12+ szükséges. Telepítés után hálózat nélkül is működik.
+A telepítés után **hálózat nélkül** is működik. Frissítés: `git pull && uv sync` – az
+adatbázis-migrációk (`sql/migrations/`) az első indításkor automatikusan lefutnak, a séma
+verziója a `schema_migrations` táblában van. Az adatmappa helye: `config/app.yaml` →
+`data_dir` vagy a `VITALMART_DATA_DIR` környezeti változó (alapértelmezés: `data/`).
 
 ## Grafikus felület
 
@@ -67,7 +76,7 @@ A Beállításokban tett módosítások a `data/settings.yaml`-ba kerülnek (git
 > Amíg a felület fut, a parancssori `vitalmart import` nem éri el az adatbázist (DuckDB-zár) –
 > importálj a felületről, vagy előbb zárd be.
 
-## Elemző (Explorer, M5)
+## Elemző (Explorer)
 
 Szabad SQL nélkül, egy **szemantikus rétegből** (`config/semantic.yaml`) választasz:
 
@@ -95,7 +104,7 @@ elemzés mentése névvel, leírással, címkékkel, felülírás, törlés; def
 Ha egy elemzés nem bontja személyek szerint, a kiválasztott személyre szűkítve fut (különben két ember
 napi adatai összekeverednének).
 
-## Haladó funkciók (M8)
+## Haladó funkciók
 
 **Események / annotációk** (Események oldal, `dim_event`): megnevezés, kategória (javaslatokból vagy
 saját), kezdő- és utolsó nap, szabad szöveges megjegyzés; egy személyre vagy az egész háztartásra.
@@ -128,7 +137,7 @@ táblák/függvények engedélylistán (staging-tábla, fájl, más adatbázis, 
 kurzoron, mindig visszagörgetett tranzakcióban, 15 s időkorláttal és 10 000 soros limittel; eredmény
 CSV-ben letölthető. Séma-böngésző az oszlopok leírásával (`config/export_tables.yaml` oszlopszótára).
 
-## Egészségügyi riport (M6)
+## Egészségügyi riport
 
 Determinisztikus, **szabályalapú** riport (nincs LLM, nincs külső hívás). A küszöbök, a szövegek és a
 forráshivatkozások kizárólag a `config/rules.yaml`-ban vannak; a paraméterek a Beállításokban
@@ -156,7 +165,7 @@ adatverzió (tartalom-hash), szabálykatalógus-verzió, időbélyeg. Újragener
 adat és szabályok mellett a HTML **bájtra azonos**; a lábléc tartalmazza a verziókat. A Plotly a
 fájlba ágyazva, CDN nélkül (kb. 5 MB / riport).
 
-## Export (M7)
+## Export
 
 Minden export a helyi adatmappa `exports/` alkönyvtárába kerül (`reports/`, `analysis/`, `raw/`),
 és az `export_history` táblába naplózódik a paraméterekkel – az Export oldal „Exporttörténet”
@@ -216,6 +225,7 @@ További parancsok:
 | `vitalmart ui [--port 8501]` | grafikus felület (csak 127.0.0.1) |
 | `vitalmart report [--person KOD] [--days 90 \| --from ÉÉÉÉ-HH-NN --to ÉÉÉÉ-HH-NN] [--out f.html] [--pdf]` | egészségügyi riport (HTML, `--pdf`-fel PDF is) |
 | `vitalmart export [--tables T …] [--person KOD …] [--from …] [--to …] [--format xlsx\|csv\|parquet]` | adatexport; `--list` a táblák, `--history` a korábbi exportok, `--regenerate ID` újrakészítés |
+| `vitalmart diagnose <export> [--person KOD] [--out diag.md] [--quick]` | **önellenőrzés**: a teljes feldolgozás egy ideiglenes adatmappában (a saját adatbázist nem érinti); megosztható, értékek nélküli jelentés – hibabejelentéshez |
 
 Globális kapcsolók: `--data-dir`, `--config`, `-v` (technikai napló).
 
@@ -278,6 +288,24 @@ Minden import egy személyhez tartozik (`--person`, alapértelmezés: `config/ap
 személy alatt érkezik, az import hibával leáll és visszagörget. A megjelenítendő név
 (`vitalmart persons --set-name partner "…"`) csak a helyi adatbázisban tárolódik.
 
+## Adatvédelem és biztonság
+
+- **Minden helyben marad.** Az adatbázis (`vitalmart.duckdb`), az exportok (`exports/`), a mentések
+  (`backups/`) és a beállítások (`settings.yaml`) az adatmappában vannak, ami `.gitignore`-olt.
+  Nincs telemetria, nincs külső API-hívás, a riport és az elemzések szabályalapúak (nincs LLM),
+  a Plotly-könyvtár a HTML-be ágyazott (nincs CDN).
+- **A felület csak a 127.0.0.1-en** érhető el; más címre kötve el sem indul.
+- **A napló** csak technikai információt tartalmaz (darabszámok, fájlnevek, időtartamok), értéket nem.
+- **Mentés:** `vitalmart backup` vagy Beállítások → Mentés (másolat a `backups/` mappába).
+  **Teljes törlés:** `vitalmart wipe --yes` vagy Beállítások → Teljes törlés (megerősítéssel).
+- **Titkosítás (ajánlott):** az adatmappát titkosított köteten tárold – Windows: BitLocker,
+  macOS: FileVault, Linux: LUKS / titkosított home. Beépített adatbázis-titkosítás nincs (a DuckDB
+  titkosított fájlja még nem minden platformon/verzióban stabil); a titkosított kötet ugyanezt nyújtja,
+  és a mentésekre, exportokra is kiterjed.
+- **Hibabejelentéshez** csak a `vitalmart schema` (mezőnevek, típusok) és a `vitalmart diagnose`
+  (lépések, darabszámok, időtartamok, hibatípusok) kimenetét oszd meg – ezek nem tartalmaznak
+  mért értéket, dátumot, eszköz- vagy forrásnevet.
+
 ## Architektúra röviden
 
 ```
@@ -314,7 +342,7 @@ export.zip ──(lxml iterparse, streaming)──► stg_apple_*      (nyers é
 - **Konfiguráció:** `config/app.yaml` (időzóna, alvás, memória), `config/metrics.yaml`
   (metrika-katalógus), `config/apple_mapping.yaml` (HK típusok, mértékegységek, edzéstípusok).
 
-## Származtatott mutatók (M3)
+## Származtatott mutatók
 
 Minden import után automatikusan újraépülnek, **személyenként**:
 
@@ -341,19 +369,35 @@ Adatminőség (`dq_*` táblák, `vitalmart quality`): lefedettség forrásonkén
 (hosszú szünet a pulzusmintákban, konstans pulzus-sorozat, Garmin „nem viselt” stressz-jelzés),
 elsődleges forrás váltása (legalább `quality.switch_min_days` napig tartó új forrás).
 
-## Teljesítmény (szintetikus adaton mérve)
+## Teljesítmény
 
-| Export | Rekord | Idő | Csúcsmemória |
-|---|---|---|---|
-| 230 MB `export.xml` | 0,58 M | 9 s | 2,2 GB |
-| 1,0 GB `export.xml` (import + core + származtatott réteg) | 2,52 M | 71 s | 3,4 GB |
+Szintetikus, ≈ 1 GB-os Apple-export (`tools/benchmark.py --days 1700`: 4,7 év, percenkénti pulzus,
+2,68 M rekord), 4 magos Linux, 16 GB RAM:
+
+| Lépés | Idő |
+|---|---|
+| első import (staging + core + származtatott réteg + adatminőség) | **69 s** (cél: < 10 perc) |
+| ugyanannak a fájlnak az újratöltése (`--force`) | 42 s |
+| teljes újraépítés (`vitalmart rebuild`) | 21 s |
+| riport (90 nap): számítás / HTML / PDF | 0,8 s / 0,1 s / 2,2 s |
+| Elemző: minden nap heti × hónap bontásban; 1 év percenkénti pulzus óra × hét napja hőtérképe | < 0,1 s |
+| XLSX-export (1 év, 2 tábla) | 0,4 s |
+
+Adatbázis: 478 MB, csúcsmemória ≈ 3,5 GB. Valós, ≈ 0,9 M rekordos Apple-exporton: import 13 s,
+újratöltés 11 s, a teljes `diagnose` (riport, PDF, minden beépített elemzés, exportok) 30 s alatt.
+
+**Inkrementális újraépítés** (SPEC 10.3, SHOULD): szándékosan nincs – minden import után a core és
+a származtatott réteg determinisztikusan, teljesen újraépül. 1 GB-nyi adaton ez ~20 s, és így nem
+fordulhat elő, hogy egy időszakon átnyúló számítás (alapvonal, mozgóátlag, „a legújabb batch nyer”
+deduplikáció, forrásváltás) részlegesen frissül. Az import többi része (staging) eleve csak az új
+sorokat írja.
 
 A DuckDB memóriakorlátja `config/app.yaml` → `database.memory_limit` (alapérték 2 GB);
 e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd lejjebb.
 
-## Ismert korlátok (M1–M7)
+## Ismert korlátok
 
-- A core réteg minden importnál **teljesen** újraépül (gyors, de nem inkrementális – SPEC 10.3 SHOULD, M9).
+- A core réteg minden importnál **teljesen** újraépül (1 GB-on ~20 s; lásd Teljesítmény).
 - Az Apple napi összesítő (`fact_daily_summary`) forrásonként külön sor (óra és iPhone
   lépései nem adódnak össze); az „elsődleges forrás metrikánként" választás az M4 Beállítások része.
 - Az Apple nem ad mérsékelt/intenzív perc bontást: a `moderate_min`/`vigorous_min` üres,
@@ -398,9 +442,31 @@ e fölött az adatmappa `tmp/` alkönyvtárába lapoz. Kisebb gépen állítsd l
 - A Garmin-tevékenységtípusok egységesítése (`activity_types` a YAML-ban) a te edzéseidhez
   igazítható; pl. az `indoor_cardio` jelenleg „egyéb / aerob".
 
+## Fejlesztés
+
+```bash
+uv run pytest                      # összes teszt (szintetikus adaton; ~4 perc)
+uv run pytest --cov=vitalmart      # lefedettség
+uv run ruff check && uv run mypy src
+uv run python tools/make_sample_data.py --out data/sample [--garmin] [--days 365]
+uv run python tools/benchmark.py --days 1700 --work /tmp/vm-bench    # ≈ 1 GB teljesítményteszt
+```
+
+Szabályok (részletesen a [`CLAUDE.md`](CLAUDE.md)-ben): valódi egészségügyi adat soha nem kerülhet a
+repóba, tesztbe vagy naplóba; orvosi küszöb és szöveg csak a `config/rules.yaml`-ban; mezőleképezés
+csak a `config/*_mapping.yaml`-ban; mérőszám/dimenzió csak a `config/semantic.yaml`-ban; minden
+felhasználói érték SQL-paraméter; a felhasználói szövegek az `src/vitalmart/i18n/{hu,en}.yaml`-ban.
+
 ## Hibaelhárítás
 
-- **„Ezt a fájlt már betöltötted"** – azonos fájl; `--force`-szal újratölthető (duplikáció nem keletkezik).
-- **„Az XML-fájl sérült vagy csonka"** – töltsd le / exportáld újra; az adatbázis változatlan maradt.
-- **Kevés a memória** – csökkentsd a `database.memory_limit` értékét.
-- **Időzóna módosítása után** futtasd: `uv run vitalmart rebuild`.
+| Jelenség | Teendő |
+|---|---|
+| „Ezt a fájlt már betöltötted” | azonos fájl; `--force`-szal újratölthető (duplikáció nem keletkezik) |
+| „Az XML-fájl sérült vagy csonka” | exportáld / töltsd le újra; az adatbázis változatlan maradt (rollback) |
+| „Az adatbázist egy másik folyamat használja” | egyszerre egy folyamat írhat: zárd be a felületet a parancssori import előtt, vagy importálj a felületről |
+| A felület nem indul: a 8501-es port foglalt | `uv run vitalmart ui --port 8502` |
+| Kevés a memória / lassú a nagy import | csökkentsd a `database.memory_limit` értékét (`config/app.yaml`); a DuckDB a `tmp/` mappába lapoz |
+| Időzóna vagy alvásnap-konvenció módosítása után furcsa napok | `uv run vitalmart rebuild` (a felületi mentés ezt automatikusan elvégzi) |
+| A riport egy szekciónál „nincs elegendő adat” | az időszakban kevés érvényes nap van (pl. új óra); válassz hosszabb/korábbi időszakot – ez szándékos, a riport nem következtet kevés adatból |
+| A Garmin megváltoztatta az export szerkezetét | `uv run vitalmart schema <export>` → útvonalak igazítása a `config/garmin_mapping.yaml`-ban |
+| Bármilyen más hiba | `uv run vitalmart diagnose <export> --out diag.md` – a megosztható jelentés megmutatja, melyik lépés hibázik |
