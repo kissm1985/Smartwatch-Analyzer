@@ -150,17 +150,42 @@ def cmd_quality(cfg: AppConfig, args: argparse.Namespace) -> int:
     return 0
 
 
+def _open_when_ready(url: str, timeout_s: float = 60.0) -> None:
+    """Open the browser once the local server answers (headless Streamlit never prompts)."""
+    import time
+    import urllib.request
+    import webbrowser
+
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(url + "_stcore/health", timeout=1):
+                webbrowser.open(url)
+                return
+        except OSError:
+            time.sleep(0.5)
+
+
 def cmd_ui(cfg: AppConfig, args: argparse.Namespace) -> int:
     """Start the Streamlit UI bound to 127.0.0.1 only (SPEC 10.1)."""
+    import os
     import subprocess
+    import threading
 
     from vitalmart.paths import PROJECT_ROOT
 
     cmd = [sys.executable, "-m", "streamlit", "run", str(PROJECT_ROOT / "app" / "main.py"),
            "--server.address", "127.0.0.1", "--server.port", str(args.port),
-           "--browser.gatherUsageStats", "false"]
-    env = dict(__import__("os").environ, VITALMART_DATA_DIR=str(cfg.data_path))
-    return subprocess.call(cmd, cwd=PROJECT_ROOT, env=env)
+           "--server.headless", "true", "--browser.gatherUsageStats", "false"]
+    env = dict(os.environ, VITALMART_DATA_DIR=str(cfg.data_path))
+    url = f"http://127.0.0.1:{args.port}/"
+    print(t("ui.started", url=url), flush=True)
+    if args.open:
+        threading.Thread(target=_open_when_ready, args=(url,), daemon=True).start()
+    try:
+        return subprocess.call(cmd, cwd=PROJECT_ROOT, env=env)
+    except KeyboardInterrupt:
+        return 0
 
 
 def cmd_report(cfg: AppConfig, args: argparse.Namespace) -> int:
@@ -296,6 +321,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     ui = sub.add_parser("ui", help="grafikus felület indítása (csak 127.0.0.1)")
     ui.add_argument("--port", type=int, default=8501)
+    ui.add_argument("--open", action="store_true", help="böngésző automatikus megnyitása")
     ui.set_defaults(func=cmd_ui)
 
     rep = sub.add_parser("report", help="egészségügyi riport (HTML)")

@@ -57,6 +57,7 @@ quality:
   switch_row: "{date} {metric}: {from_source} → {to_source}"
   none: "none"
 ui:
+  started: "VitalMart: {url}  (stop: Ctrl+C)"
   not_localhost: "For safety VitalMart only runs on the local machine (127.0.0.1). Configured address: {address}"
   person: "Person"
   person_single: "Person: {name}"

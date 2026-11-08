@@ -57,6 +57,7 @@ quality:
   switch_row: "{date} {metric}: {from_source} → {to_source}"
   none: "nincs"
 ui:
+  started: "VitalMart: {url}  (leállítás: Ctrl+C)"
   not_localhost: "Biztonsági okból a VitalMart csak a helyi gépen (127.0.0.1) futhat. Beállított cím: {address}"
   person: "Személy"
   person_single: "Személy: {name}"

@@ -20,3 +20,6 @@ dist/
 # Exportfájlok (egészségügyi adat)
 *.xlsx
 *.parquet
+
+# npm-indító (nincs npm-függőség, de biztos, ami biztos)
+node_modules/

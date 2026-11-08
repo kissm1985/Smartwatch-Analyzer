@@ -15,14 +15,31 @@ külön kezelhetők (személy = elemzési dimenzió, nem felhasználói fiók). 
 
 ## Gyors kezdés
 
+Ha van **Node.js** (18+) és **Git** a gépeden, ugyanúgy indítható, mint egy Node-projekt:
+
 ```bash
-uv sync                                                     # 1) telepítés (egyszer)
-uv run vitalmart import --person me   <garmin-export>.zip   # 2) adatok betöltése
-uv run vitalmart import --person partner exportálás.zip
-uv run vitalmart ui                                         # 3) felület: http://127.0.0.1:8501
+git clone -b claude/funny-keller-v2yxsd https://github.com/kissm1985/smartwatch-analyzer.git vitalmart
+cd vitalmart
+npm install        # első alkalommal: telepíti az uv-t (ha nincs) és a Python-környezetet
+npm run dev        # elindul a felület, és megnyílik a böngészőben: http://127.0.0.1:8501
 ```
 
-Valódi adat nélkül is kipróbálható szintetikus mintával (lásd [Első lépések](#első-lépések)).
+Frissítés később: `git pull`, `npm install`, `npm run dev`. Leállítás: Ctrl+C.
+(Az npm itt csak indító: az alkalmazás Pythonban fut, a függőségeket az [uv](https://docs.astral.sh/uv/)
+kezeli; npm-csomag nem települ.)
+
+| Parancs | Mit csinál |
+|---|---|
+| `npm run dev` | felület indítása + böngésző megnyitása |
+| `npm start` | felület indítása böngésző nélkül |
+| `npm run import -- --person me garmin.zip` | export betöltése parancssorból (amíg a felület nem fut) |
+| `npm run sample` | szintetikus mintaadat létrehozása és betöltése (kipróbáláshoz) |
+| `npm run diagnose -- garmin.zip --person me --out diag.md` | megosztható, értékek nélküli önellenőrzés |
+| `npm run backup` | adatbázis-mentés |
+| `npm run cli -- <parancs>` | bármely `vitalmart` parancs (pl. `npm run cli -- report --pdf`) |
+| `npm test`, `npm run lint` | tesztek, lint |
+
+Node nélkül ugyanez közvetlenül: `uv sync`, majd `uv run vitalmart ui --open`.
 
 ## Telepítés
 

@@ -171,3 +171,24 @@ def test_benchmark_tool_runs_small(tmp_path):
 def sys_executable() -> str:
     import sys
     return sys.executable
+
+
+# ---------------------------------------------------------------- npm launcher
+
+def test_npm_launcher_and_ui_open_flag(monkeypatch):
+    import json
+
+    from vitalmart import cli
+    root = Path(__file__).resolve().parents[1]
+    pkg = json.loads((root / "package.json").read_text(encoding="utf-8"))
+    assert pkg["scripts"]["postinstall"] == "node scripts/uv.mjs setup"
+    assert pkg["scripts"]["dev"].endswith("vitalmart ui --open")
+    assert not pkg.get("dependencies") and (root / "scripts" / "uv.mjs").exists()
+    assert "foreground-scripts=true" in (root / ".npmrc").read_text(encoding="utf-8")
+    args = cli.build_parser().parse_args(["ui", "--open", "--port", "8599"])
+    assert args.open and args.port == 8599
+    opened = []
+    monkeypatch.setattr("webbrowser.open", opened.append)
+    t0 = time.perf_counter()
+    cli._open_when_ready("http://127.0.0.1:9/", timeout_s=1.0)   # nothing listens there
+    assert not opened and time.perf_counter() - t0 < 5

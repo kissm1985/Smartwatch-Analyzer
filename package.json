@@ -1,0 +1,22 @@
+{
+  "name": "vitalmart",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Helyben futó okosóra-adatpiac és egészségügyi elemző (Python/uv alkalmazás npm-indítóval)",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "postinstall": "node scripts/uv.mjs setup",
+    "dev": "node scripts/uv.mjs run vitalmart ui --open",
+    "start": "node scripts/uv.mjs run vitalmart ui",
+    "import": "node scripts/uv.mjs run vitalmart import",
+    "sample": "node scripts/uv.mjs run python tools/make_sample_data.py --out data/sample && node scripts/uv.mjs run vitalmart import --person me data/sample/export.zip",
+    "diagnose": "node scripts/uv.mjs run vitalmart diagnose",
+    "backup": "node scripts/uv.mjs run vitalmart backup",
+    "cli": "node scripts/uv.mjs run vitalmart",
+    "test": "node scripts/uv.mjs run pytest",
+    "lint": "node scripts/uv.mjs run ruff check"
+  }
+}
