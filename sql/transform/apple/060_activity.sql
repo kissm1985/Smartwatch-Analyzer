@@ -50,7 +50,7 @@ WITH w AS (
     FROM j ASOF LEFT JOIN tz_offset o ON j.start_utc >= o.valid_from_utc
 )
 SELECT
-    nk_hash, 'apple:' || coalesce(source_name, 'unknown'), 'apple:' || activity_type,
+    nk_hash, apple_source_key(source_name, device), 'apple:' || activity_type,
     CAST(strftime(start_utc + to_minutes(offset_min), '%Y%m%d') AS INTEGER),
     start_utc, end_utc, start_utc + to_minutes(offset_min), end_utc + to_minutes(offset_min),
     offset_min, duration_min,

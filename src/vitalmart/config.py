@@ -31,6 +31,8 @@ class DerivedConfig(BaseModel):
     source_priority: list[str] = Field(
         default_factory=lambda: ["watch", "phone", "summary", "app", "other"])
     primary_source: dict[str, str] = Field(default_factory=dict)
+    # sources left out of the derived layer, the report and the Explorer (data is kept)
+    excluded_sources: list[str] = Field(default_factory=list)
     baseline_window_days: int = Field(60, ge=7, le=365)
     baseline_min_days: int = Field(28, ge=2, le=365)
     band_z: float = Field(1.5, gt=0)

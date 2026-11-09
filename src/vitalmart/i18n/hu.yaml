@@ -162,6 +162,10 @@ ui:
     flags_note: "A megjelölt értékek nem törlődnek; az elemzések alapból kizárják őket."
     none: "Nincs ilyen tétel."
   settings:
+    excluded: "Elemzésből kizárt források"
+    excluded_help: "A kizárt forrás adatai megmaradnak (export, SQL-konzol, adatminőség), de a napi mutatók, az áttekintés, a riport és az Elemző nem használja – pl. egy korábbi karkötő vagy egy pontatlan alkalmazás. Mentés után a rendszer újraszámol."
+    excluded_none: "nincs kizárt forrás"
+    source_label: "{name} · {type} · {person} · {first} – {last}"
     title: "Beállítások"
     tab_general: "Általános"
     tab_people: "Személyek és profil"

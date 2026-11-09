@@ -162,6 +162,10 @@ ui:
     flags_note: "Flagged values are never deleted; analyses exclude them by default."
     none: "Nothing here."
   settings:
+    excluded: "Sources excluded from analysis"
+    excluded_help: "Data of an excluded source is kept (export, SQL console, data quality) but not used by daily metrics, the overview, the report and the Explorer – e.g. an old band or an inaccurate app. Saving recomputes everything."
+    excluded_none: "no excluded source"
+    source_label: "{name} · {type} · {person} · {first} – {last}"
     title: "Settings"
     tab_general: "General"
     tab_people: "People and profile"

@@ -129,10 +129,22 @@ with tab_s:
                            key=f"ovr_{row.metric_key}")
         if sel:
             new_over[row.metric_key] = sel
+    st.subheader(t("ui.settings.excluded"))
+    st.caption(t("ui.settings.excluded_help"))
+    srcs = q.all_sources(con)
+    src_label = {r.source_key: t("ui.settings.source_label", name=r.source_name,
+                                 type=r.device_type, person=r.person_key or "–",
+                                 first=q.fmt_date(r.first_date), last=q.fmt_date(r.last_date))
+                 for r in srcs.itertuples()}
+    excluded = st.multiselect(t("ui.settings.excluded"), list(src_label),
+                              default=[k for k in cfg.derived.excluded_sources if k in src_label],
+                              format_func=src_label.get, key="set_excluded",
+                              placeholder=t("ui.settings.excluded_none"))
     if st.button(t("ui.settings.save_rebuild"), type="primary", key="save_sources"):
         stored = load_settings(cfg.data_path)
         stored.setdefault("derived", {})["primary_source"] = new_over
         stored["derived"]["source_priority"] = prio or all_types
+        stored["derived"]["excluded_sources"] = sorted(excluded)
         # primary_source must be REPLACED, not merged (removing an override must work)
         save_settings(cfg.data_path, {"derived": {"primary_source": None}})
         save_settings(cfg.data_path, {"derived": stored["derived"]})

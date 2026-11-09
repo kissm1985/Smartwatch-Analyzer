@@ -258,6 +258,18 @@ Globális kapcsolók: `--data-dir`, `--config`, `-v` (technikai napló).
 > (ékezetek felbontott, NFD formában). A felismerés a tartalom alapján történik, így a fájlnév
 > nyelve nem számít.
 
+> **Az Apple-export mindent tartalmaz, amit valaha bármi beírt az Egészség appba** – nem csak az
+> óra adatait: az iPhone lépésszámát (évekre visszamenőleg), alkalmazásokat (mérleg, alvás-app) és
+> korábbi órákat/karkötőket is. Ezért egy új Apple Watch mellett is lehetnek évekkel korábbi adatok.
+> Forrásonként az Adatminőség oldalon látszik, mi mettől meddig jött.
+
+**Források és külső eszközök.** Egy Apple-forrás (`sourceName`) alatt más eszközök adatai is érkezhetnek
+(pl. az iPhone-hoz kapcsolt pulzuspánt, fülhallgató, egy alkalmazáson át szinkronizált karkötő). Ezek
+**külön forrásként** jelennek meg („‹forrás› › ‹eszköz›”, típus: `other`), így pl. egy korábbi óra
+pulzusa nem számít iPhone-adatnak. Bármely forrás **kizárható az elemzésből** (Beállítások → Források →
+„Elemzésből kizárt források”): a napi mutatók, az áttekintés, a riport és az Elemző nem használja, de az
+adat megmarad (export, SQL-konzol, adatminőség).
+
 Feldolgozott tartalom: `export.xml` (`Record`, `Workout`, `ActivitySummary`);
 az EKG CSV-k változatlanul tárolódnak (értelmezés nélkül); a GPX útvonalak nyilvántartásba
 kerülnek; az `export_cda.xml` figyelmen kívül marad.

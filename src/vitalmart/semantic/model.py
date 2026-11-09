@@ -56,6 +56,8 @@ class Topic(BaseModel):
     ts_expr: str | None = None
     person_expr: str
     minute_expr: str = "f.minute_of_day"
+    # fact topics: source column; excluded sources (map_excluded_source) are filtered out
+    source_col: str | None = None
     joins: list[str] = Field(default_factory=list)
     dimensions: list[str] = Field(default_factory=list)      # may contain "date.*" patterns
     required_dimensions: list[str] = Field(default_factory=list)

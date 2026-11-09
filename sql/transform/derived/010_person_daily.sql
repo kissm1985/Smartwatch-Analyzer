@@ -6,7 +6,8 @@
 CREATE OR REPLACE TEMP TABLE _src AS
 SELECT s.source_key, coalesce(s.person_key, 'unassigned') AS person_key, s.vendor,
        coalesce(p.prio, 99) AS prio
-FROM dim_source s LEFT JOIN _priority p ON p.device_type = s.device_type;
+FROM dim_source s LEFT JOIN _priority p ON p.device_type = s.device_type
+WHERE s.source_key NOT IN (SELECT source_key FROM map_excluded_source);   -- Beállítások
 
 CREATE OR REPLACE TEMP TABLE _cand AS
 -- daily summary columns (UNPIVOT drops NULLs)

@@ -16,7 +16,7 @@ WITH d AS (
     FROM s ASOF LEFT JOIN tz_offset o ON coalesce(s.end_utc, s.start_utc) >= o.valid_from_utc
 ), m AS (
     SELECT e.*,
-        'apple:' || coalesce(e.source_name, 'unknown') AS source_key,
+        apple_source_key(e.source_name, e.device) AS source_key,
         coalesce(mt.metric_key,
             'apple_' || lower(regexp_replace(
                 regexp_replace(e.record_type,

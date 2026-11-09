@@ -9,7 +9,7 @@ WITH src AS (
            import_batch_id
     FROM _apple_rec
     UNION ALL
-    SELECT 'apple:' || coalesce(w.source_name, 'unknown'), w.source_name, w.source_version,
+    SELECT apple_source_key(w.source_name, w.device), w.source_name, w.source_version,
            w.device, w.start_utc, w.start_utc + to_minutes(o.offset_min), w.import_batch_id
     FROM stg_apple_workout w ASOF LEFT JOIN tz_offset o ON w.start_utc >= o.valid_from_utc
     WHERE w.start_utc IS NOT NULL
@@ -25,8 +25,9 @@ WITH src AS (
 SELECT
     src.source_key,
     'Apple',
-    any_value(src.source_name),
+    any_value(src.source_name) || coalesce(' › ' || any_value(apple_ext_device(src.device)), ''),
     arg_max(CASE
+        WHEN apple_ext_device(src.device) IS NOT NULL THEN 'other'
         WHEN src.device ILIKE '%name:Apple Watch%' OR src.source_name ILIKE '%watch%' THEN 'watch'
         WHEN src.device ILIKE '%name:iPhone%' OR src.source_name ILIKE '%iphone%' THEN 'phone'
         WHEN src.device IS NULL THEN 'app'

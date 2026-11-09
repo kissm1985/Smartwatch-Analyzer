@@ -58,6 +58,15 @@ def persons(con: duckdb.DuckDBPyConnection) -> list[tuple[str, str]]:
     return [(r[0], r[1]) for r in rows]
 
 
+def all_sources(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+    """Every source with its person, type and data span (for the exclusion setting)."""
+    return con.execute("""
+        SELECT s.source_key, s.vendor, s.source_name, s.device_type, s.person_key,
+               s.first_date, s.last_date,
+               s.source_key IN (SELECT source_key FROM map_excluded_source) AS excluded
+        FROM dim_source s ORDER BY s.person_key, s.first_date NULLS LAST, s.source_key""").df()
+
+
 def has_data(con: duckdb.DuckDBPyConnection) -> bool:
     return bool(con.execute("SELECT count(*) FROM dim_source").fetchall()[0][0])
 

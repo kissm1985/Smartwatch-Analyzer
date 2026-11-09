@@ -7,6 +7,7 @@
 # topic.date_expr    DATE kifejezés (időszak-szűrés, időfelbontás)
 # topic.ts_expr      opcionális időbélyeg (percszintű "nyers" idősorhoz)
 # topic.person_expr  személy kifejezés (közvetlen oszlop vagy a forráson át)
+# topic.source_col   ténytábla forrásoszlopa: a Beállításokban kizárt források kimaradnak
 # topic.joins        a topic által engedett join-ok (név -> ON feltétel); csak akkor kerül be,
 #                    ha egy kiválasztott dimenzió/szűrő/mérőszám igényli
 # measure.where      (hosszú/EAV táblánál) melyik sorokra vonatkozik a mérőszám
@@ -109,6 +110,7 @@ topics:
     date_expr: f.sleep_date
     date_key: f.sleep_date_key
     person_expr: ds.person_key
+    source_col: f.source_key
     joins: [date, source, event]
     dimensions: [date.*, person, source.*, event.*]
     timeline: {start: f.start_local, end: f.end_local, label: "'alvás'"}
@@ -138,6 +140,7 @@ topics:
     date_expr: CAST(f.start_local AS DATE)
     date_key: f.date_key
     person_expr: ds.person_key
+    source_col: f.source_key
     minute_expr: "hour(f.start_local) * 60 + minute(f.start_local)"
     joins: [date, source, activity_type, time_of_day, event]
     dimensions: [date.*, person, source.*, activity.*, time.*, event.*]
@@ -163,6 +166,7 @@ topics:
     date_expr: f.sleep_date
     date_key: f.sleep_date_key
     person_expr: ds.person_key
+    source_col: f.source_key
     joins: [date, source, event]
     dimensions: [date.*, person, source.*, hrv.method, event.*]
     required_dimensions: [hrv.method]      # SDNN és RMSSD sosem keveredhet
@@ -182,6 +186,7 @@ topics:
     date_key: f.date_key
     ts_expr: f.ts_local
     person_expr: ds.person_key
+    source_col: f.source_key
     joins: [date, source, time_of_day, event]
     dimensions: [date.*, person, source.*, time.*, hr.context, event.*]
     measures:
@@ -198,6 +203,7 @@ topics:
     date_key: f.date_key
     ts_expr: f.ts_local
     person_expr: ds.person_key
+    source_col: f.source_key
     joins: [date, source, time_of_day, event]
     dimensions: [date.*, person, source.*, time.*, stress.category, event.*]
     measures:
@@ -269,6 +275,7 @@ topics:
     date_expr: CAST(f.ts_local AS DATE)
     date_key: f.date_key
     person_expr: ds.person_key
+    source_col: f.source_key
     joins: [date, source, event]
     dimensions: [date.*, person, source.*, event.*]
     measures:

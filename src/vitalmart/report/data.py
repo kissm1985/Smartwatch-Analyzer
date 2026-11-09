@@ -94,6 +94,7 @@ def load(con: duckdb.DuckDBPyConnection, person: str, start: date, end: date) ->
         LEFT JOIN dim_activity_type t USING (activity_type_key)
         WHERE s.person_key = ? AND a.quality_flag = 'ok'
           AND CAST(a.start_local AS DATE) BETWEEN ? AND ?
+          AND a.source_key NOT IN (SELECT source_key FROM map_excluded_source)
         ORDER BY a.start_utc""", [person, start, end]).df()
     zones = con.execute("""
         SELECT z.zone, sum(z.seconds_in_zone) AS seconds
@@ -101,9 +102,11 @@ def load(con: duckdb.DuckDBPyConnection, person: str, start: date, end: date) ->
         JOIN fact_activity a USING (activity_id)
         JOIN dim_source s ON s.source_key = a.source_key
         WHERE s.person_key = ? AND CAST(a.start_local AS DATE) BETWEEN ? AND ?
+          AND a.source_key NOT IN (SELECT source_key FROM map_excluded_source)
         GROUP BY 1 ORDER BY 1""", [person, start, end]).df()
     sources = con.execute("""SELECT source_key, vendor, source_name, device_type, first_date,
                                     last_date FROM dim_source WHERE person_key = ?
+                               AND source_key NOT IN (SELECT source_key FROM map_excluded_source)
                              ORDER BY vendor, source_key""", [person]).df()
     gaps = con.execute("""SELECT * FROM dq_gap WHERE person_key = ?
                           AND gap_end >= ? AND gap_start <= ? ORDER BY gap_days DESC""",

@@ -17,6 +17,9 @@ def prepare(con: duckdb.DuckDBPyConnection, cfg: AppConfig) -> None:
                 "(metric_key VARCHAR, source_key VARCHAR)")
     insert_rows(con, "_primary_override", ["metric_key", "source_key"],
                 sorted(d.primary_source.items()))
+    con.execute("DELETE FROM map_excluded_source")
+    insert_rows(con, "map_excluded_source", ["source_key"],
+                [(k,) for k in sorted(set(d.excluded_sources))])
     for name, value in (
         ("bl_window_days", d.baseline_window_days), ("bl_min_days", d.baseline_min_days),
         ("band_z", float(d.band_z)), ("reg_min_nights", d.regularity_min_nights),

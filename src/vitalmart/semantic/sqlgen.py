@@ -65,6 +65,8 @@ def _filters(
     joins: set[str] = set()
     if topic.base_where:
         where.append(topic.base_where)
+    if topic.source_col:
+        where.append(f"{topic.source_col} NOT IN (SELECT source_key FROM map_excluded_source)")
     if topic.quality and spec.quality_ok_only:
         where.append("f.quality_flag = 'ok'")
     if date_from is not None:
